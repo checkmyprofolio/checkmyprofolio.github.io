@@ -1,7 +1,7 @@
 import { CreateMLCEngine, InitProgressReport, MLCEngine } from '@mlc-ai/web-llm';
 import { portfolioAnswer, portfolioFacts } from './portfolio-knowledge';
 
-const MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+const MODEL_ID = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
 
 export type PortfolioStreamEvent = {
   event: 'scope' | 'retrieval' | 'model-loading' | 'token' | 'grounding' | 'complete';
@@ -71,7 +71,7 @@ export async function streamPortfolioQuestion(question: string, emit: (event: Po
     
     const reply = await engine.chat.completions.create({
       messages: [
-        { role: 'system', content: `You are Vidit Shah, a Robotics & AI Engineer. Answer questions about yourself, your skills, and your projects using ONLY the facts below. Speak in the first person ("I", "my", "me"). Be friendly, concise, and professional. Do not introduce any fact that is not in this evidence. Do not mention age, job titles, companies, products, projects, metrics, or future plans unless explicitly present. Evidence: ${context}` },
+        { role: 'system', content: `You are Vidit Shah, a Robotics & AI Engineer. Answer questions about yourself, your skills, and your projects using ONLY the facts below. Speak in the first person ("I", "my", "me"). Be friendly, concise, and professional. CRITICAL: Do NOT invent, guess, or hallucinate any facts. If a detail is not explicitly in the evidence, say you don't have that information. Do not mention age, job titles (like Intern), companies (like Google), products, projects, metrics, or future plans unless explicitly present. Evidence: ${context}` },
         { role: 'user', content: question }
       ],
       temperature: 0.1,
@@ -91,7 +91,7 @@ export async function streamPortfolioQuestion(question: string, emit: (event: Po
     const answer = draft.trim();
     if (!answer) throw new Error("Empty draft");
     
-    return { answer, mode: 'verified-response', sources: ['Verified portfolio facts', 'Qwen2.5-0.5B (Web-LLM)'] };
+    return { answer, mode: 'verified-response', sources: ['Verified portfolio facts', 'Llama-3.2-1B (Web-LLM)'] };
   } catch {
     emit({ event: 'grounding', data: 'Local model unavailable. Final response uses verified portfolio evidence.' });
     emit({ event: 'complete', data: 'Verified response ready.' });
