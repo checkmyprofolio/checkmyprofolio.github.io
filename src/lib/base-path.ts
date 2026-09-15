@@ -1,1 +1,7 @@
-export function withBase(path: string | undefined): string | undefined { if (!path) return path; if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path; const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/checkmyprofolio.github.io'; if (path.startsWith(basePath)) return path; return basePath + (path.startsWith('/') ? '' : '/') + path; }
+export function withBase(path: string | undefined): string | undefined {
+  if (!path) return path;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+  if (!basePath || path.startsWith(basePath)) return path;
+  return basePath + (path.startsWith('/') ? '' : '/') + path;
+}

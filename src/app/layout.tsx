@@ -37,9 +37,9 @@ export default function RootLayout({
       <head>
         <title>Profolio | Your Professional Portfolio</title>
         <meta name="description" content="A modern, animated portfolio built with Next.js." />
-        <link rel="icon" href="/checkmyprofolio.github.io/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" href="/checkmyprofolio.github.io/icon.png" />
-        <link rel="apple-touch-icon" href="/checkmyprofolio.github.io/apple-icon.png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" href="/icon.png" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet" />
