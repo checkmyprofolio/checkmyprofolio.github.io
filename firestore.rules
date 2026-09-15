@@ -1,0 +1,118 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isRequiredString(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    function isOptionalString(value, max) {
+      return value == null || (value is string && value.size() <= max);
+    }
+
+    function isOptionalStringInRange(value, min, max) {
+      return value == null || isRequiredString(value, min, max);
+    }
+
+    function hasVerifiedPhone() {
+      return request.auth.token.phone_number != null;
+    }
+
+    function hasFederatedProvider() {
+      return request.resource.data.providerIds.hasAny(['google.com', 'github.com', 'microsoft.com']);
+    }
+
+    function isValidUserProfile(uid) {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'website',
+          'location',
+          'phoneNumber',
+          'emailVerified',
+          'phoneVerified',
+          'providerIds',
+          'onboardingCompleted',
+          'createdAt',
+          'updatedAt',
+        ]) &&
+        request.resource.data.uid == uid &&
+        isOptionalString(request.resource.data.email, 254) &&
+        isOptionalStringInRange(request.resource.data.displayName, 2, 80) &&
+        isOptionalString(request.resource.data.photoURL, 2048) &&
+        isOptionalString(request.resource.data.website, 2048) &&
+        isOptionalStringInRange(request.resource.data.location, 2, 120) &&
+        request.resource.data.phoneNumber == (hasVerifiedPhone() ? request.auth.token.phone_number : null) &&
+        request.resource.data.emailVerified == (request.auth.token.email_verified == true) &&
+        request.resource.data.phoneVerified == hasVerifiedPhone() &&
+        request.resource.data.providerIds is list &&
+        request.resource.data.providerIds.size() > 0 &&
+        request.resource.data.providerIds.size() <= 6 &&
+        request.resource.data.onboardingCompleted is bool &&
+        (!request.resource.data.onboardingCompleted ||
+          (isRequiredString(request.resource.data.displayName, 2, 80) &&
+            isRequiredString(request.resource.data.location, 2, 120) &&
+            request.resource.data.phoneVerified &&
+            (request.resource.data.emailVerified || hasFederatedProvider())));
+    }
+
+    function isValidDeletionTrace() {
+      return request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'emailVerified',
+          'phoneNumber',
+          'phoneVerified',
+          'website',
+          'location',
+          'providerIds',
+          'creationTime',
+          'lastSignInTime',
+          'deletedAt',
+          'source',
+        ]) &&
+        request.resource.data.uid == request.auth.uid &&
+        isOptionalString(request.resource.data.email, 254) &&
+        isOptionalString(request.resource.data.displayName, 80) &&
+        isOptionalString(request.resource.data.photoURL, 2048) &&
+        request.resource.data.emailVerified is bool &&
+        request.resource.data.phoneNumber == (hasVerifiedPhone() ? request.auth.token.phone_number : null) &&
+        request.resource.data.phoneVerified == hasVerifiedPhone() &&
+        isOptionalString(request.resource.data.website, 2048) &&
+        isOptionalString(request.resource.data.location, 120) &&
+        request.resource.data.providerIds is list &&
+        request.resource.data.providerIds.size() <= 6 &&
+        isOptionalString(request.resource.data.creationTime, 120) &&
+        isOptionalString(request.resource.data.lastSignInTime, 120) &&
+        request.resource.data.deletedAt is timestamp &&
+        isRequiredString(request.resource.data.source, 3, 40);
+    }
+
+    match /userProfiles/{uid} {
+      allow read: if isSelf(uid);
+      allow create, update: if isSelf(uid) && isValidUserProfile(uid);
+      allow delete: if false;
+    }
+
+    match /accountDeletionTraces/{traceId} {
+      allow create: if isSignedIn() && isValidDeletionTrace();
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

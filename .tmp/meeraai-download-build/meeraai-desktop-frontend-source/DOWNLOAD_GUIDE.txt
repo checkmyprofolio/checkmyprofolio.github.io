@@ -1,0 +1,41 @@
+﻿MeeraAI Desktop Frontend Source Guide
+
+What this archive contains
+- React + TypeScript frontend source
+- Vite web build setup
+- Electron desktop shell files
+- public assets, scripts, and UI source
+
+Recommended environment
+- Windows
+- Node.js 20 LTS recommended
+- npm 10 or newer (bundled with Node.js 20)
+- Python available in PATH for the helper scripts and Meera backend
+
+Main stack
+- Node.js: runs the JavaScript and TypeScript tooling
+- npm: installs packages and runs project scripts from package.json
+- React + TypeScript: frontend UI layer
+- Vite: fast dev server and frontend build tool
+- Electron: wraps the frontend into a desktop app shell
+
+Run for development
+1. Open a terminal in the Agent root where Meera.py exists.
+2. Start the backend API:
+   python Meera.py --api --port 8000
+3. Open another terminal in desktop_frontend:
+   npm install
+   npm run dev
+
+Useful scripts
+- npm run dev      -> starts Vite + Electron together
+- npm run build    -> creates production frontend build + Electron TS compile
+- npm run package  -> builds the Windows packaged app
+- npm run dist     -> full Electron builder distribution flow
+- npm run preview  -> previews the Vite frontend build
+- npm run backend  -> starts the backend from package.json
+
+Important notes
+- package.json runs Python helper scripts before dev/build.
+- The frontend expects the Meera backend endpoint at http://127.0.0.1:8000/api/chat unless changed in the app source.
+- This is source code, not a preinstalled application.

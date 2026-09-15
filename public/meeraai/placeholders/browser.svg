@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-label="Reserved screenshot area: Meera Browser">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0c1931"/><stop offset="1" stop-color="#07101c"/></linearGradient><radialGradient id="glow"><stop stop-color="#38bdf8" stop-opacity=".13"/><stop offset="1" stop-color="#38bdf8" stop-opacity="0"/></radialGradient></defs>
+<rect width="1440" height="900" fill="url(#bg)"/><ellipse cx="500" cy="360" rx="600" ry="430" fill="url(#glow)"/>
+<rect x="70" y="70" width="1300" height="760" rx="32" fill="none" stroke="#7dd3fc" stroke-opacity=".22" stroke-dasharray="8 12"/>
+<g fill="none" stroke="#7dd3fc" stroke-width="3" opacity=".65"><rect x="676" y="315" width="88" height="70" rx="12"/><path d="m683 370 22-24 17 18 14-14 22 25"/><circle cx="742" cy="335" r="6"/></g>
+<text x="720" y="445" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" font-weight="600" fill="#e2e8f0">Meera Browser</text>
+<text x="720" y="492" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" fill="#94a3b8">Updated screenshot to be added</text>
+<text x="720" y="548" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" letter-spacing="4" fill="#7dd3fc" opacity=".65">RESERVED IMAGE SPACE</text></svg>

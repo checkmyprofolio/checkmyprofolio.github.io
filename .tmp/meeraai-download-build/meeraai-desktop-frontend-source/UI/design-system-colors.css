@@ -1,0 +1,41 @@
+/* Meera Futuristic Design System Colors & Effects */
+:root {
+  --bg-space: #0A0F1C;
+  --glass-panel: rgba(30, 40, 60, 0.6);
+  --neon-cyan: #00FFF7;
+  --neon-magenta: #FF00EA;
+  --neon-yellow: rgba(255, 214, 0, 0);
+  --glass-blur: 16px;
+  --glass-radius: 24px;
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  --font-primary: 'Space Grotesk', 'Orbitron', sans-serif;
+}
+
+.glass-panel {
+  background: var(--glass-panel);
+  backdrop-filter: blur(var(--glass-blur));
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow);
+  border: 2px solid var(--neon-cyan);
+  color: #fff;
+  font-family: var(--font-primary);
+  padding: 2rem;
+  margin: 1rem;
+  position: relative;
+}
+
+.neon-glow {
+  box-shadow: 0 0 16px var(--neon-cyan), 0 0 32px var(--neon-magenta);
+  border: 2px solid var(--neon-cyan);
+  animation: neonPulse 2s infinite alternate;
+}
+
+@keyframes neonPulse {
+  0% { box-shadow: 0 0 16px var(--neon-cyan), 0 0 32px var(--neon-magenta); }
+  100% { box-shadow: 0 0 32px var(--neon-magenta), 0 0 64px var(--neon-cyan); }
+}
+
+/* Responsive font scaling handled in src/styles.css */
+html {
+  font-size: 100%;
+}

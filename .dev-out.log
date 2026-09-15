@@ -1,0 +1,11 @@
+
+> nextn@0.1.0 dev
+> next dev -p 9002
+
+   ▲ Next.js 15.3.8
+   - Local:        http://localhost:9002
+   - Network:      http://192.168.0.101:9002
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1556ms

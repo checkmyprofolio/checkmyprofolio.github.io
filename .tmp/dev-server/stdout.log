@@ -1,0 +1,26 @@
+
+> nextn@0.1.0 dev
+> next dev -p 9002
+
+   ▲ Next.js 15.3.8
+   - Local:        http://localhost:9002
+   - Network:      http://192.168.0.101:9002
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1453ms
+ ✓ Compiled /middleware in 443ms (153 modules)
+ ○ Compiling /profile ...
+ ✓ Compiled /profile in 6.3s (2302 modules)
+ GET / 200 in 6841ms
+ GET /profile 200 in 6870ms
+ GET / 200 in 53ms
+ ✓ Compiled /favicon.ico in 443ms (1298 modules)
+ GET /favicon.ico 200 in 591ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 680ms (2261 modules)
+ GET /login 200 in 859ms
+ ✓ Compiled /register in 439ms (2264 modules)
+ GET /register 200 in 562ms
+ ✓ Compiled in 1064ms (2262 modules)
+ GET /register 200 in 87ms

@@ -1,0 +1,29 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#111421"/>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="800" cy="314" r="176" fill="url(#sun)"/>
+  <path d="M0 616C194 593 316 585 463 612C626 642 754 701 932 681C1098 663 1221 588 1365 576C1445 570 1520 573 1600 589V900H0V616Z" fill="url(#hillsBack)"/>
+  <path d="M0 704C185 673 342 678 482 717C650 764 775 812 957 792C1124 773 1265 700 1417 693C1477 690 1538 695 1600 712V900H0V704Z" fill="url(#hillsFront)"/>
+  <path d="M0 510H1600" stroke="#FFF0DA" stroke-opacity="0.18" stroke-width="2"/>
+  <path d="M132 477C314 516 451 529 621 493C775 461 930 409 1112 414C1262 418 1391 455 1468 492" stroke="#FFF0DA" stroke-opacity="0.22" stroke-width="6" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="sky" x1="800" y1="0" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4D5B7E"/>
+      <stop offset="0.38" stop-color="#26395C"/>
+      <stop offset="1" stop-color="#131A28"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(800 314) rotate(90) scale(176)">
+      <stop stop-color="#FFF3D9" stop-opacity="0.8"/>
+      <stop offset="0.52" stop-color="#F6C27F" stop-opacity="0.52"/>
+      <stop offset="1" stop-color="#F6C27F" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hillsBack" x1="800" y1="576" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#35415F"/>
+      <stop offset="1" stop-color="#171D2C"/>
+    </linearGradient>
+    <linearGradient id="hillsFront" x1="800" y1="693" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1B2437"/>
+      <stop offset="1" stop-color="#0E131E"/>
+    </linearGradient>
+  </defs>
+</svg>

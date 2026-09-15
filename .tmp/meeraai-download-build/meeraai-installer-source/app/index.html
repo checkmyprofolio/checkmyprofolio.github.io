@@ -1,0 +1,219 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MeeraAI Installer</title>
+    <link rel="stylesheet" href="installer.css" />
+  </head>
+  <body>
+    <div class="window-frame">
+      <div class="wallpaper"></div>
+      <div class="wallpaper-overlay"></div>
+
+      <div class="installer-shell">
+        <main class="content">
+          <div class="body-header drag">
+            <div class="brand">
+              <img src="assets/logo.png" alt="MeeraAI" />
+              <div class="brand-wordmark">MeeraAI</div>
+            </div>
+          </div>
+
+          <div class="screen-title drag">Setup</div>
+
+          <div class="window-controls no-drag">
+            <button type="button" data-action="minimize" aria-label="Minimize">
+              <img src="assets/minimize.svg" alt="" />
+            </button>
+            <button type="button" data-action="close" aria-label="Close">
+              <img src="assets/close.svg" alt="" />
+            </button>
+          </div>
+        <section id="step-welcome" class="step active">
+          <div class="welcome-screen" id="welcome-screen">
+            <div class="welcome-stage">
+              <img class="welcome-logo" src="assets/logo.png" alt="MeeraAI logo" />
+              <svg class="welcome-wordmark-svg" viewBox="0 0 360 90" role="img" aria-label="MeeraAI">
+                <text x="50%" y="56%" text-anchor="middle" dominant-baseline="middle">MeeraAI</text>
+              </svg>
+              <div class="welcome-credit">Made by</div>
+              <div class="welcome-signature">Vidit Shah</div>
+              <button class="welcome-cta" id="welcome-continue" type="button" aria-label="Continue">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M8.5 5.5L15 12l-6.5 6.5"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-manage" class="step">
+          <div class="grid">
+            <div class="panel setup-panel">
+              <h2>MeeraAI is already installed</h2>
+              <p class="hint">
+                Detected installation at <span class="mono" id="installed-path">C:\\MeeraAI</span>
+              </p>
+              <p class="hint">
+                Choose an action below to keep your install healthy, create a backup, or remove it.
+              </p>
+              <div class="actions">
+                <button class="btn ghost" id="btn-manage-backup">Backup</button>
+                <button class="btn ghost" id="btn-manage-uninstall">Uninstall</button>
+                <button class="btn primary" id="btn-manage-repair">Repair</button>
+              </div>
+              <div class="actions">
+                <button class="btn ghost" id="btn-manage-install">Install new copy</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-setup" class="step">
+          <div class="grid">
+            <div class="panel setup-panel">
+              <h2>Choose installation folder</h2>
+              <div class="path-row">
+                <input id="install-path" type="text" readonly />
+                <button class="btn ghost" id="btn-browse">Browse</button>
+              </div>
+              <p class="hint">Recommended: <span class="mono">C:\\MeeraAI</span></p>
+
+              <h2>Pick your default model</h2>
+              <div class="model-list">
+                <label class="model-option">
+                  <input type="radio" name="model" value="meera-lite-1b" checked />
+                  <div>
+                    <strong>Meera Lite</strong>
+                    <span>TinyLlama 1.1B — fastest startup (default)</span>
+                  </div>
+                </label>
+                <label class="model-option">
+                  <input type="radio" name="model" value="meera-core-3b" />
+                  <div>
+                    <strong>Meera Core</strong>
+                    <span>Llama 3.2 3B — also downloads Gemma 3 4B (requires access)</span>
+                  </div>
+                </label>
+                <label class="model-option">
+                  <input type="radio" name="model" value="meera-pro-4b" />
+                  <div>
+                    <strong>Meera Pro</strong>
+                    <span>Gemma 3 4B — also downloads Llama 3.2 3B (requires access)</span>
+                  </div>
+                </label>
+                <label class="model-option">
+                  <input type="radio" name="model" value="meera-max-6b" />
+                  <div>
+                    <strong>Meera Max</strong>
+                    <span>GPT‑J 6B — deeper output</span>
+                  </div>
+                </label>
+                <label class="model-option">
+                  <input type="radio" name="model" value="meera-ultra-8b" />
+                  <div>
+                    <strong>Meera Ultra</strong>
+                    <span>Beagle 8B — requires token</span>
+                  </div>
+                </label>
+              </div>
+              <p class="hint" id="model-download-note">
+                The installer saves your default model now. After Python and libraries finish installing, MeeraAI will automatically start downloading that model when you launch the app.
+              </p>
+
+              <div class="install-options">
+                <label class="checkbox">
+                  <input type="checkbox" id="opt-desktop" checked />
+                  <span>Create desktop shortcut</span>
+                </label>
+                <label class="checkbox">
+                  <input type="checkbox" id="opt-path" />
+                  <span>Add MeeraAI to PATH</span>
+                </label>
+              </div>
+
+              <div class="actions">
+                <button class="btn ghost" id="btn-back">Back</button>
+                <button class="btn primary" id="btn-install">Install</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-progress" class="step centered">
+          <div class="panel">
+            <h2>Installing MeeraAI</h2>
+            <p class="lead" id="progress-message">Preparing files…</p>
+            <div class="progress">
+              <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="progress-meta">
+              <span id="progress-percent">0%</span>
+              <span id="progress-file">Starting…</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-finish" class="step centered">
+          <div class="panel">
+            <h2 id="finish-title">Setup complete</h2>
+            <p class="lead" id="finish-lead">MeeraAI is installed and ready to launch.</p>
+            <label class="checkbox" id="finish-launch-row">
+              <input type="checkbox" id="launch-after" checked />
+              <span>Launch MeeraAI after closing installer</span>
+            </label>
+            <div class="actions" id="finish-actions">
+              <button class="btn ghost" id="btn-finish-close">Close</button>
+              <button class="btn primary" id="btn-finish-launch">Launch</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="step-error" class="step centered">
+          <div class="panel">
+            <h2>Install failed</h2>
+            <p class="lead" id="error-message">Something went wrong.</p>
+            <div class="actions">
+              <button class="btn ghost" id="btn-error-back">Back</button>
+              <button class="btn primary" id="btn-error-exit">Exit</button>
+            </div>
+          </div>
+        </section>
+
+        <div id="confirm-backdrop" class="confirm-backdrop" hidden>
+          <div id="confirm-card" class="confirm-card primary" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+            <div class="confirm-header">
+              <div class="confirm-badge" aria-hidden="true">
+                <span id="confirm-symbol">?</span>
+              </div>
+              <div class="confirm-copy">
+                <span id="confirm-kicker" class="confirm-kicker">Confirm action</span>
+                <h3 id="confirm-title">Continue?</h3>
+                <p id="confirm-description">Please confirm this action.</p>
+                <div id="confirm-note" class="confirm-note" hidden></div>
+              </div>
+              <button id="confirm-close" class="confirm-close" type="button" aria-label="Close confirmation">
+                <img src="assets/close.svg" alt="" />
+              </button>
+            </div>
+            <div class="confirm-actions">
+              <button id="confirm-cancel" class="confirm-btn ghost" type="button">Cancel</button>
+              <button id="confirm-accept" class="confirm-btn primary" type="button">Continue</button>
+            </div>
+          </div>
+        </div>
+        </main>
+      </div>
+  </div>
+
+    <script src="installer.js"></script>
+  </body>
+</html>

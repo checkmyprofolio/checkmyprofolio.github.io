@@ -1,0 +1,20 @@
+/* Neon Button Styles */
+.neon-button {
+  background: linear-gradient(180deg, var(--copilot-accent), var(--copilot-accent-strong));
+  color: #fff;
+  border: 1px solid rgba(76, 194, 255, 0.6);
+  border-radius: 14px;
+  padding: 0.65rem 1.4rem;
+  font-family: var(--font-futuristic);
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(45, 127, 224, 0.32);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.neon-button:hover,
+.neon-button:focus {
+  transform: translateY(-1px);
+  border-color: rgba(76, 194, 255, 0.85);
+  box-shadow: 0 16px 30px rgba(45, 127, 224, 0.4);
+}

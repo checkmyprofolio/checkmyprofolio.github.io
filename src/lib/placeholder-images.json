@@ -1,0 +1,34 @@
+{
+  "placeholderImages": [
+    {
+      "id": "project-1",
+      "description": "Abstract visualization of stock market data",
+      "imageUrl": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzdG9jayUyMG1hcmtldCUyMGRhdGF8ZW58MHx8fHwxNzU4NzMwMjM4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "stock market"
+    },
+    {
+      "id": "project-2",
+      "description": "AIRLearn platform preview",
+      "imageUrl": "/airlearn/airlearn-cover.jpeg",
+      "imageHint": "airlearn education platform"
+    },
+    {
+      "id": "project-3",
+      "description": "A vibrant digital landscape with flowing lines",
+      "imageUrl": "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxkaWdpdGFsJTIwbGFuZHNjYXBlfGVufDB8fHx8MTc1ODcyMTA0NXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "digital landscape"
+    },
+    {
+      "id": "project-4",
+      "description": "An intricate network of nodes and connections",
+      "imageUrl": "https://images.unsplash.com/photo-1717501218534-156f33c28f8d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxuZXR3b3JrJTIwbm9kZXN8ZW58MHx8fHwxNzU4NTk3MzE2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "network nodes"
+    },
+    {
+      "id": "avatar",
+      "description": "Hacker-style avatar with hoodie and sunglasses",
+      "imageUrl": "/something/hacker.png",
+      "imageHint": "hacker developer avatar"
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+Retrieving project…
+Deploying rockstar5656s-projects/checkmyprofolio
+Uploading [--------------------] (0.0B/305.6KB)
+Uploading [=====---------------] (87.8KB/305.6KB)
+Uploading [==========----------] (167.8KB/305.6KB)
+Uploading [===============-----] (231.8KB/305.6KB)
+Uploading [====================] (305.6KB/305.6KB)
+Inspect: https://vercel.com/rockstar5656s-projects/checkmyprofolio/7V1gAFyLwGFnCmoyY1SbpRpZTNy7 [5s]
+Production: https://checkmyprofolio-2srv9n1d4-rockstar5656s-projects.vercel.app [5s]
+Building...
+Building...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Downloading 343 deployment files...
+Building: Restored build cache from previous deployment (yFgCW8vH6yMrAJFQ2QC6ZYoQLdva)
+Building: Running "vercel build"
+Building: Vercel CLI 50.38.2
+Building: Installing dependencies...
+Building: up to date in 10s
+Building: 109 packages are looking for funding
+Building: run `npm fund` for details
+Building: Detected Next.js version: 15.3.8
+Building: Running "npm run build"
+Building: > nextn@0.1.0 build
+Building: > next build
+Building: ? Next.js 15.3.8
+Building: - Environments: .env
+Building: Creating an optimized production build ...
+Building: ? Compiled successfully in 5.0s
+Building: Linting and checking validity of types ...
+Building: Collecting page data ...
+Building: Generating static pages (0/18) ...
+Building: Generating static pages (4/18)
+Building: Generating static pages (8/18)
+Building: Generating static pages (13/18)
+Building: ? Generating static pages (18/18)
+Building: Finalizing page optimization ...
+Building: Collecting build traces ...
+Building: Route (app)                                 Size  First Load JS
+Building: + ? /                                      769 B         140 kB
+Building: + ? /_not-found                            990 B         102 kB
+Building: + ? /(.)profile                            296 B         237 kB
+Building: + ƒ /api/location/reverse                  171 B         101 kB
+Building: + ? /complete-profile                      561 B         157 kB
+Building: + ? /contact                              2.8 kB         213 kB
+Building: + ? /dashboard                           2.67 kB         205 kB
+Building: + ? /home                                8.27 kB         219 kB
+Building: + ? /login                                 156 B         213 kB
+Building: + ? /meeraai                               31 kB         197 kB
+Building: + ? /meeraai/download                    8.41 kB         158 kB
+Building: + ? /meeraai/profile                       307 B         237 kB
+Building: + ? /profile                               294 B         237 kB
+Building: + ? /projects                            9.73 kB         229 kB
+Building: + ? /register                              156 B         213 kB
+Building: + ? /verify-email                        4.96 kB         218 kB
+Building: + First Load JS shared by all             101 kB
+Building: + chunks/1684-67bc79e739c83aa1.js        46 kB
+Building: + chunks/4bd1b696-2b3fd875ed20cd78.js  53.2 kB
+Building: + other shared chunks (total)          2.02 kB
+Building: ƒ Middleware                             32.3 kB
+Building: ?  (Static)   prerendered as static content
+Building: ƒ  (Dynamic)  server-rendered on demand
+Building: Traced Next.js server files in: 112.872ms
+Building: Created all serverless functions in: 264.259ms
+Building: Collected static files (public/, static/, .next/static): 14.227ms
+Building: Build Completed in /vercel/output [44s]
+Building: Deploying outputs...
+Building: Deployment completed
+Building: Creating build cache...
+[2K[1A[2K[GProduction: https://checkmyprofolio-2srv9n1d4-rockstar5656s-projects.vercel.app [1m]
+Completing...
+Aliased: https://checkmyprofolio-khaki.vercel.app [1m]
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_7V1gAFyLwGFnCmoyY1SbpRpZTNy7",
+    "url": "https://checkmyprofolio-2srv9n1d4-rockstar5656s-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/rockstar5656s-projects/checkmyprofolio/7V1gAFyLwGFnCmoyY1SbpRpZTNy7",
+    "readyState": "READY",
+    "target": "production",
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_7V1gAFyLwGFnCmoyY1SbpRpZTNy7"
+  },
+  "message": "Deployment checkmyprofolio-2srv9n1d4-rockstar5656s-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel inspect checkmyprofolio-2srv9n1d4-rockstar5656s-projects.vercel.app",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod",
+      "when": "Promote to production"
+    }
+  ]
+}

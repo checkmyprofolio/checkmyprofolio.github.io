@@ -1,0 +1,36 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#07111F"/>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <path d="M0 581C135 496 222 505 351 572C478 638 594 615 715 543C827 477 932 465 1081 531C1210 589 1328 602 1600 487V900H0V581Z" fill="url(#mesaBack)"/>
+  <path d="M0 654C141 566 256 558 383 615C513 673 626 666 764 592C883 529 991 514 1122 568C1256 623 1384 641 1600 560V900H0V654Z" fill="url(#mesaMid)"/>
+  <path d="M0 729C132 664 285 626 462 662C643 699 777 702 952 651C1130 600 1307 618 1600 718V900H0V729Z" fill="url(#mesaFront)"/>
+  <path d="M684 900L746 652H860L921 900H684Z" fill="#141D2E"/>
+  <path d="M754 900L792 668H814L851 900H754Z" fill="#0D1422"/>
+  <rect x="784" y="630" width="36" height="30" rx="8" fill="#ECF4FF" fill-opacity="0.16"/>
+  <path d="M596 779C642 742 702 737 768 751C827 763 900 762 973 737C1043 713 1119 711 1206 743" stroke="#F7D7A8" stroke-opacity="0.25" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="1268" cy="196" r="72" fill="#F9D5A3" fill-opacity="0.18"/>
+  <circle cx="1268" cy="196" r="126" fill="url(#sunGlow)"/>
+  <defs>
+    <linearGradient id="sky" x1="800" y1="0" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34415A"/>
+      <stop offset="0.4" stop-color="#1D2A43"/>
+      <stop offset="1" stop-color="#081221"/>
+    </linearGradient>
+    <linearGradient id="mesaBack" x1="800" y1="487" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26314C"/>
+      <stop offset="1" stop-color="#111A2C"/>
+    </linearGradient>
+    <linearGradient id="mesaMid" x1="800" y1="514" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6A4454"/>
+      <stop offset="1" stop-color="#2B2030"/>
+    </linearGradient>
+    <linearGradient id="mesaFront" x1="800" y1="600" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7E4F45"/>
+      <stop offset="1" stop-color="#1D141B"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1268 196) rotate(90) scale(180)">
+      <stop stop-color="#FFD4A3" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFD4A3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+</svg>

@@ -1,0 +1,40 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" fill="#040916"/>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <ellipse cx="478" cy="223" rx="312" ry="182" fill="url(#glowLeft)"/>
+  <ellipse cx="1172" cy="187" rx="346" ry="210" fill="url(#glowRight)"/>
+  <path d="M0 232C126 198 269 176 401 194C545 212 629 282 770 299C941 319 1058 234 1196 204C1323 177 1455 182 1600 223V416H0V232Z" fill="url(#auroraA)" fill-opacity="0.75"/>
+  <path d="M0 290C138 262 254 261 404 285C558 309 694 362 843 346C989 331 1111 251 1251 231C1362 215 1478 222 1600 260V430H0V290Z" fill="url(#auroraB)" fill-opacity="0.72"/>
+  <path d="M0 628C164 574 315 556 460 583C611 611 761 657 907 637C1052 618 1191 548 1333 543C1434 539 1522 553 1600 588V900H0V628Z" fill="url(#mountains)"/>
+  <path d="M0 712C148 675 280 679 402 716C529 754 665 800 812 796C966 792 1090 733 1214 716C1329 699 1458 710 1600 759V900H0V712Z" fill="#06111F"/>
+  <circle cx="1304" cy="154" r="53" fill="#F0F7FF" fill-opacity="0.18"/>
+  <defs>
+    <linearGradient id="sky" x1="800" y1="0" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#061026"/>
+      <stop offset="0.48" stop-color="#071526"/>
+      <stop offset="1" stop-color="#03070F"/>
+    </linearGradient>
+    <radialGradient id="glowLeft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(478 223) rotate(90) scale(220 376)">
+      <stop stop-color="#66FFF2" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#66FFF2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowRight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1172 187) rotate(90) scale(250 424)">
+      <stop stop-color="#6AA3FF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#6AA3FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="auroraA" x1="0" y1="247" x2="1600" y2="247" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#42F0D0"/>
+      <stop offset="0.45" stop-color="#7EF8FF"/>
+      <stop offset="1" stop-color="#A076FF"/>
+    </linearGradient>
+    <linearGradient id="auroraB" x1="0" y1="300" x2="1600" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2FD9FF"/>
+      <stop offset="0.5" stop-color="#6CF0C8"/>
+      <stop offset="1" stop-color="#657CFF"/>
+    </linearGradient>
+    <linearGradient id="mountains" x1="800" y1="543" x2="800" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A2940"/>
+      <stop offset="1" stop-color="#08101D"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,49 @@
+{
+  "name": "meeraai-installer",
+  "version": "0.1.0",
+  "description": "MeeraAI installer",
+  "author": "Vidit Shah",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "prepare:icon": "python scripts/prepare-icon.py",
+    "prepare:payload": "node scripts/prepare-payload.js",
+    "clean:release": "node scripts/clean-release.js",
+    "finalize:release": "node scripts/finalize-release.js",
+    "package": "python scripts/prepare-icon.py && node scripts/clean-release.js && node scripts/prepare-payload.js && electron-builder --win --x64 && node scripts/finalize-release.js"
+  },
+  "build": {
+    "appId": "com.meera.installer",
+    "productName": "MeeraAI Installer",
+    "copyright": "Copyright © Vidit Shah",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "files": [
+      "app/**/*",
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "payload",
+        "to": "payload"
+      },
+      {
+        "from": "../requirements.txt",
+        "to": "requirements.txt"
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "build/icon.ico",
+      "executableName": "MeeraAI Installer"
+    }
+  },
+  "devDependencies": {
+    "7zip-bin": "5.2.0",
+    "electron": "^41.0.2",
+    "electron-builder": "^26.8.1"
+  }
+}

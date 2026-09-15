@@ -1,0 +1,47 @@
+﻿MeeraAI Installer Source Guide
+
+What this archive contains
+- Electron-based installer source for MeeraAI
+- packaging scripts for payload preparation and release finalization
+- app UI files, build resources, main process, and preload files
+
+Recommended environment
+- Windows
+- Node.js 20 LTS recommended
+- npm 10 or newer
+- Python available in PATH
+
+What this project does
+- This is not the main app frontend.
+- It is the installer/packager project that wraps a built MeeraAI desktop release into a portable installer executable.
+
+Expected folder relationship
+The installer scripts expect a layout like this:
+Agent/
+  Meera.py
+  requirements.txt
+  desktop_frontend/
+  installer/
+
+Important packaging dependency
+- The installer package flow expects desktop_frontend to already have a packaged or unpacked release available.
+- The script scripts/prepare-payload.js looks for the built desktop app in ../desktop_frontend/release and copies it into the installer payload.
+
+Typical workflow
+1. Build/package the desktop_frontend project first.
+2. Place installer next to desktop_frontend under the same Agent root.
+3. In installer, run:
+   npm install
+   npm run package
+
+Useful scripts
+- npm run prepare:icon      -> prepares installer icon assets
+- npm run prepare:payload   -> gathers the packaged frontend into payload
+- npm run clean:release     -> removes stale release output
+- npm run finalize:release  -> normalizes release executable naming
+- npm run package           -> full installer packaging flow
+
+Important notes
+- package.json builds a Windows portable target.
+- The installer also expects ../requirements.txt and ../Meera.py to exist.
+- This archive is source code for packaging, not a standalone ready-to-run installer release.
