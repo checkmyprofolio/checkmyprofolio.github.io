@@ -16,10 +16,25 @@ type Message = {
 
 const welcome: Message = {
   role: 'assistant',
-  content: '# Hi, I’m Vidit’s portfolio assistant.\n\n## What I can answer\n- My projects and engineering work\n- My education and technical skills\n- My public portfolio background and experience\n- My public contact details\n\n---\n\nI only answer from information verified by this portfolio.',
+  content: `# What’s up 👋
+
+## Welcome to my portfolio
+- 🤖 Ask me about **my projects and engineering work**.
+- 🧠 Ask about **MeeraAI, local AI, robotics, or software systems**.
+- 🎓 Ask about **my education, skills, and engineering background**.
+- 📫 Ask for my **public contact details**.
+
+---
+
+I’ll talk to you like **Vidit**, not like a support bot — and I’ll keep the technical details grounded in what’s actually documented here.`,
 };
 
-const prompts = ['What is MeeraAI?', 'Tell me about Vidit', 'What has he built?', 'What are his skills?'];
+const prompts = [
+  '🧠 What is MeeraAI?',
+  '👋 Tell me about Vidit',
+  '🚀 What have I built?',
+  '💻 What are my skills?',
+];
 
 function InlineMarkdown({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]*\)|https?:\/\/[^\s]+)/g).filter(Boolean);
@@ -28,7 +43,7 @@ function InlineMarkdown({ text }: { text: string }) {
     if (part.startsWith('`') && part.endsWith('`')) return <code key={index} className="rounded-md bg-slate-950/10 px-1.5 py-0.5 text-[0.9em] dark:bg-white/10">{part.slice(1, -1)}</code>;
     const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (link) return <a key={index} href={link[2]} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{link[1]}</a>;
-    if (/^https?:\/\//.test(part)) return <a key={index} href={part} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 break-all">{part}</a>;
+    if (/^https?:\/\//.test(part)) return <a key={index} href={part} target="_blank" rel="noreferrer" className="break-all text-primary underline underline-offset-2">{part}</a>;
     return <span key={index}>{part}</span>;
   })}</>;
 }
@@ -54,7 +69,7 @@ function RichMarkdown({ content }: { content: string }) {
     const rows = table.filter((r) => r.trim()).map((r) => r.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()));
     const clean = rows.filter((r, i) => !(i === 1 && r.every((c) => /^:?-{2,}:?$/.test(c))));
     if (clean.length) {
-      blocks.push(<div key={`table-${blocks.length}`} className="overflow-x-auto rounded-xl border border-slate-500/15 dark:border-white/10"><table className="min-w-full text-left text-xs"><tbody>{clean.map((row, ri) => <tr key={ri} className={ri === 0 ? 'border-b border-slate-500/15 bg-slate-500/5 dark:border-white/10 dark:bg-white/[0.03]' : 'border-b last:border-b-0 border-slate-500/10 dark:border-white/5'}>{row.map((cell, ci) => ri === 0 ? <th key={ci} className="px-3 py-2 font-semibold"> <InlineMarkdown text={cell} /></th> : <td key={ci} className="px-3 py-2 align-top"><InlineMarkdown text={cell} /></td>)}</tr>)}</tbody></table></div>);
+      blocks.push(<div key={`table-${blocks.length}`} className="overflow-x-auto rounded-xl border border-slate-500/15 dark:border-white/10"><table className="min-w-full text-left text-xs"><tbody>{clean.map((row, ri) => <tr key={ri} className={ri === 0 ? 'border-b border-slate-500/15 bg-slate-500/5 dark:border-white/10 dark:bg-white/[0.03]' : 'border-b last:border-b-0 border-slate-500/10 dark:border-white/5'}>{row.map((cell, ci) => ri === 0 ? <th key={ci} className="px-3 py-2 font-semibold"><InlineMarkdown text={cell} /></th> : <td key={ci} className="px-3 py-2 align-top"><InlineMarkdown text={cell} /></td>)}</tr>)}</tbody></table></div>);
     }
     table = [];
   };
@@ -71,7 +86,13 @@ function RichMarkdown({ content }: { content: string }) {
     if (t.startsWith('```')) { flush(); pushTable(); code = []; return; }
     if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(t)) { flush(); pushTable(); blocks.push(<div key={`hr-${index}`} className="my-4 h-px w-full bg-gradient-to-r from-transparent via-primary/35 to-transparent" />); return; }
     const heading = t.match(/^(#{1,3})\s+(.+)$/);
-    if (heading) { flush(); pushTable(); const level = heading[1].length; const cls = level === 1 ? 'text-lg font-bold' : level === 2 ? 'text-base font-semibold text-primary' : 'text-sm font-semibold'; blocks.push(level === 1 ? <h3 key={`h-${index}`} className={cls}><InlineMarkdown text={heading[2]} /></h3> : level === 2 ? <h4 key={`h-${index}`} className={cls}><InlineMarkdown text={heading[2]} /></h4> : <h5 key={`h-${index}`} className={cls}><InlineMarkdown text={heading[2]} /></h5>); return; }
+    if (heading) {
+      flush(); pushTable();
+      const level = heading[1].length;
+      const cls = level === 1 ? 'text-lg font-bold' : level === 2 ? 'text-base font-semibold text-primary' : 'text-sm font-semibold';
+      blocks.push(level === 1 ? <h3 key={`h-${index}`} className={cls}><InlineMarkdown text={heading[2]} /></h3> : level === 2 ? <h4 key={`h-${index}`} className={cls}><InlineMarkdown text={heading[2]} /></h4> : <h5 key={`h-${index}`} className={cls}><InlineMarkdown text={heading[2]} /></h5>);
+      return;
+    }
     if (t.startsWith('|') || t.endsWith('|')) { flush(); table.push(t); return; }
     const bullet = t.match(/^[-*+]\s+(.+)$/); if (bullet) { if (paragraph.length || numbers.length) flush(); bullets.push(bullet[1]); return; }
     const number = t.match(/^\d+\.\s+(.+)$/); if (number) { if (paragraph.length || bullets.length) flush(); numbers.push(number[1]); return; }
@@ -79,7 +100,7 @@ function RichMarkdown({ content }: { content: string }) {
     paragraph.push(t);
   });
 
-  if (code !== null) blocks.push(<pre key={`code-final`} className="overflow-x-auto rounded-xl border border-slate-500/15 bg-slate-950/5 p-3 text-xs dark:border-white/10 dark:bg-black/25"><code>{code.join('\n')}</code></pre>);
+  if (code !== null) blocks.push(<pre key="code-final" className="overflow-x-auto rounded-xl border border-slate-500/15 bg-slate-950/5 p-3 text-xs dark:border-white/10 dark:bg-black/25"><code>{code.join('\n')}</code></pre>);
   flush(); pushTable();
 
   return <div className="space-y-3 text-sm text-foreground">{blocks}</div>;
@@ -103,12 +124,13 @@ function ThinkingPanel({ events }: { events: PortfolioStreamEvent[] }) {
     <div className="flex items-center gap-2 border-b border-primary/10 px-3 py-2.5">
       <div className="relative h-2 w-2"><span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" /><span className="relative block h-2 w-2 rounded-full bg-primary" /></div>
       <span className="text-xs font-semibold text-primary">Thinking</span>
-      <span className="text-[10px] text-muted-foreground">Verifying against portfolio evidence…</span>
+      <span className="text-[10px] text-muted-foreground">I’m checking my portfolio evidence…</span>
     </div>
     <div className="px-3 py-2.5 font-mono text-[10px] leading-4 text-muted-foreground">
-      {(events.length ? events.slice(-5) : [{ event: 'retrieval', data: 'Preparing verified portfolio context…' } as PortfolioStreamEvent]).map((event, index) => <div key={`${event.event}-${index}`} className="flex items-start gap-2"><span className="shrink-0 text-primary">{event.event}</span><span className="truncate animate-pulse">{event.data}</span></div>)}
+      {(events.length ? events.slice(-5) : [{ event: 'retrieval', data: 'Preparing my verified portfolio context…' } as PortfolioStreamEvent]).map((event, index) => <div key={`${event.event}-${index}`} className="flex items-start gap-2"><span className="shrink-0 text-primary">{event.event}</span><span className="truncate">{event.data}</span></div>)}
     </div>
-    <div className="h-[2px] w-full bg-[linear-gradient(90deg,transparent,rgba(59,130,246,.55),transparent)] bg-[length:200%_100%] animate-pulse" />
+    <div className="portfolio-thinking-shimmer h-[2px] w-full" />
+    <style jsx>{`\n      .portfolio-thinking-shimmer {\n        background: linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.08) 25%, hsl(var(--primary) / 0.65) 50%, hsl(var(--primary) / 0.08) 75%, transparent 100%);\n        background-size: 220% 100%;\n        animation: portfolioShimmer 1.65s linear infinite;\n      }\n      @keyframes portfolioShimmer {\n        from { background-position: 220% 0; }\n        to { background-position: -220% 0; }\n      }\n    `}</style>
   </div>;
 }
 
@@ -146,7 +168,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       });
       setMessages([...history, { role: 'assistant', content: data.answer, mode: data.mode, notice: data.notice, sources: data.sources }]);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'Unable to answer that question. Please try again.');
+      setError(exception instanceof Error ? exception.message : 'I hit a local error. Try that again.');
       setInput(question);
       setMessages(history.slice(0, -1));
     } finally {
@@ -174,7 +196,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         {messages.map((message, index) => <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode && <p className="mt-3 text-[11px] text-muted-foreground/80">{message.mode === 'verified-response' ? 'Verified portfolio answer' : 'Portfolio answer'} · Local evidence constrained</p>}
+            {message.mode && <p className="mt-3 text-[11px] text-muted-foreground/80">{message.mode === 'verified-response' ? 'Verified portfolio answer' : 'Portfolio answer'} · Evidence constrained</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
             {message.sources && <SourceList sources={message.sources} />}
           </div>
@@ -191,10 +213,10 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
       <form onSubmit={(event) => { event.preventDefault(); send(input); }} className="flex items-end gap-2">
         <label htmlFor="portfolio-question" className="sr-only">Your question</label>
-        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
+        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask me about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />On-device retrieval + Qwen · evidence constrained · portfolio-only scope</p>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />On-device portfolio chat · verified evidence · no made-up facts.</p>
     </div>
   </>;
 }
