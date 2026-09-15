@@ -12,6 +12,7 @@ type Message = {
   mode?: 'verified-response' | 'portfolio';
   notice?: string;
   sources?: string[];
+  model?: string;
 };
 
 const welcome: Message = {
@@ -100,8 +101,10 @@ function RichMarkdown({ content }: { content: string }) {
     paragraph.push(t);
   });
 
-  if (code !== null) blocks.push(<pre key="code-final" className="overflow-x-auto rounded-xl border border-slate-500/15 bg-slate-950/5 p-3 text-xs dark:border-white/10 dark:bg-black/25"><code>{code.join('\n')}</code></pre>);
-  flush(); pushTable();
+  const remainingCode = code;
+  if (remainingCode) blocks.push(<pre key="code-final" className="overflow-x-auto rounded-xl border border-slate-500/15 bg-slate-950/5 p-3 text-xs dark:border-white/10 dark:bg-black/25"><code>{remainingCode.join('\n')}</code></pre>);
+  flush();
+  pushTable();
 
   return <div className="space-y-3 text-sm text-foreground">{blocks}</div>;
 }
@@ -164,9 +167,11 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       const data = await streamPortfolioQuestion(question, (event) => {
         setStreamEvents((events) => [...events.slice(-7), event]);
         if (event.event === 'model-loading') setLoadingModel(true);
+        if (event.event === 'model-ready') setLoadingModel(false);
         if (event.event === 'token') { setLoadingModel(false); setDraftAnswer((prev) => prev + event.data); }
+        if (event.event === 'error') setError(event.data);
       });
-      setMessages([...history, { role: 'assistant', content: data.answer, mode: data.mode, notice: data.notice, sources: data.sources }]);
+      setMessages([...history, { role: 'assistant', content: data.answer, mode: data.mode, notice: data.notice, sources: data.sources, model: data.model }]);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'I hit a local error. Try that again.');
       setInput(question);
@@ -196,7 +201,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         {messages.map((message, index) => <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode && <p className="mt-3 text-[11px] text-muted-foreground/80">{message.mode === 'verified-response' ? 'Verified portfolio answer' : 'Portfolio answer'} · Evidence constrained</p>}
+            {message.mode && <p className="mt-3 text-[11px] text-muted-foreground/80">{message.mode === 'verified-response' ? `Fresh ${message.model || 'local'} response` : 'Portfolio response'} · Evidence constrained</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
             {message.sources && <SourceList sources={message.sources} />}
           </div>
@@ -213,10 +218,10 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
       <form onSubmit={(event) => { event.preventDefault(); send(input); }} className="flex items-end gap-2">
         <label htmlFor="portfolio-question" className="sr-only">Your question</label>
-        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask me about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
+        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />On-device portfolio chat · verified evidence · no made-up facts.</p>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />Local model generation · portfolio evidence constrained · no silent canned fallback.</p>
     </div>
-  </>;
+  </>
 }
