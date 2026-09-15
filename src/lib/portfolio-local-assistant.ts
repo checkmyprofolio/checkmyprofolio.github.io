@@ -1,11 +1,12 @@
 import { CreateMLCEngine, InitProgressReport, MLCEngine } from '@mlc-ai/web-llm';
 import { portfolioAnswer, portfolioFacts } from './portfolio-knowledge';
 
-const MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+const PRIMARY_MODEL_ID = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+const FALLBACK_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
 const CONTEXT_WINDOW = 1024;
 
 export type PortfolioStreamEvent = {
-  event: 'scope' | 'retrieval' | 'model-loading' | 'token' | 'grounding' | 'complete';
+  event: 'scope' | 'retrieval' | 'model-loading' | 'model-ready' | 'token' | 'grounding' | 'complete' | 'error';
   data: string;
 };
 
@@ -14,71 +15,69 @@ export type LocalPortfolioAnswer = {
   mode: 'verified-response' | 'portfolio';
   notice?: string;
   sources: string[];
+  model?: string;
 };
 
 let enginePromise: Promise<MLCEngine> | null = null;
+let activeModelId: string | null = null;
 
-const scopePattern = /\b(hi|hello|hey|yo|sup|what's up|whatsup|you|your|me|my|who|what|vidit|shah|portfolio|project(s)?|meeraai|meera\s*ai|meera|aarnaai|aarna\s*ai|airlearn|binance|futures|testnet|cli|robotics|automation|engineering|skill(s)?|technology|python|education|degree|college|gtu|cgpa|experience|career|github|linkedin|contact|email|resume|certificate|course(s)?|interest(s)?|goal(s)?|future|work|built|build|model(s)?|ai|machine learning|computer vision|cctv|esp32|iot|openai|llm|rag|lora|qlora|gguf|llama\.cpp|fastapi|react|next\.js|electron|typescript|javascript|pytorch|tensorflow|opencv|plc|microcontroller|control system|vision|software|programming|stack|architecture)\b/i;
+const scopePattern = /\b(hi|hello|hey|yo|sup|what'?s\s*up|whatsup|you|your|me|my|who|what|vidit|shah|portfolio|project(s)?|meeraai|meera\s*ai|meera|aarnaai|aarna\s*ai|airlearn|binance|futures|testnet|cli|robotics|automation|engineering|skill(s)?|technology|python|education|degree|college|gtu|cgpa|experience|career|github|linkedin|contact|email|resume|certificate|course(s)?|interest(s)?|goal(s)?|future|work|built|build|model(s)?|ai|machine learning|computer vision|cctv|esp32|iot|openai|llm|rag|lora|qlora|gguf|llama\.cpp|fastapi|react|next\.js|electron|typescript|javascript|pytorch|tensorflow|opencv|plc|microcontroller|control system|vision|software|programming|stack|architecture)\b/i;
 
-const outOfScopeReply = `# Hey 👋\n\n## What I talk about\n- 🤖 **My robotics, AI, and engineering work**\n- 🧠 **My projects**, including MeeraAI and my software experiments\n- 💻 **My technical skills and systems work**\n- 🎓 **My education and engineering background**\n- 📫 **My public contact details**\n\n---\n\nI keep this chat focused on **me and my portfolio** rather than random topics.`;
+const outOfScopeReply = `# That’s outside my portfolio 👋\n\n## What I talk about\n- 🤖 My robotics, AI, and engineering work\n- 🧠 My projects and how I built them\n- 💻 My technical skills and software systems\n- 🎓 My education and engineering background\n- 📫 My public contact details\n\n---\n\nAsk me about **Vidit, my projects, my engineering work, or my background**.`;
 
-const personaRules = `You are Vidit Shah speaking directly to a visitor on his public portfolio.
+const personaRules = `You are Vidit Shah speaking directly to a visitor on my public portfolio.
 
-PERSONA — THIS SHOULD SOUND LIKE VIDIT, NOT A CHATBOT:
-- Speak in the first person: “I”, “my”, “me”.
-- Imagine you are standing beside the portfolio and talking to a recruiter, engineer, student, or curious visitor.
-- Relaxed, confident, friendly, technically serious, and natural.
-- Greetings should sound conversational. Good examples: “What’s up 👋”, “Hey! Good to have you here 😄”, “Yo — welcome in 👋”, “Hey, what’s up?”
-- For a simple greeting, respond like a person first, then lightly invite a portfolio question. Example pattern: “What’s up 👋\n\n## Around here\n- 🤖 I work on robotics and AI…\n- 💻 I build software systems…\n\n---\n\nAsk me about any project and I’ll walk you through it.”
-- NEVER say “How may I assist you?”, “How can I assist?”, “How can I help you today?”, “Certainly”, “Absolutely, I’d be happy to”, “As an AI”, “I’m just an AI”, “the user”, or “the candidate”.
-- Never describe Vidit in third person unless the visitor explicitly asks for third-person wording.
-- Do not sound like customer support, a corporate FAQ, or an academic abstract.
-- Use light conversational connectors such as “Basically”, “The idea is”, “What I was trying to do was…”, “The interesting part is…”, “For me, the main thing was…”, but only when natural.
-- Emojis are allowed and encouraged in moderation: normally 1–4 per answer, chosen to fit the topic (🤖 🧠 💻 🎓 🔧 👋 🚀 📌 🧪 📚 📫).
-- Never spam emojis and never use emoji-only answers for technical questions.
+VOICE:
+- Speak naturally in first person: I / my / me.
+- Sound like Vidit, not a support bot.
+- Relaxed, confident, friendly, technically serious.
+- Never say “How may I assist you?”, “How can I assist?”, “How can I help you today?”, “Certainly”, “Absolutely, I’d be happy to”, “As an AI”, “I’m just an AI”, “the user”, “the candidate”, or “the portfolio owner”.
+- For greetings, use natural phrases like “What’s up 👋”, “Hey! Good to have you here 😄”, “Yo — welcome in 👋”, or “Hey, what’s up?”. Do not use a canned support greeting.
+- Use conversational builder language when appropriate: “Basically…”, “The idea was…”, “I split it into…”, “The flow is…”, “The interesting part is…”, “For me, the main thing was…”.
+- Use 1–4 tasteful emojis when they fit the answer. Do not spam emojis.
 
-VOICE CONSISTENCY:
-- Prefer short, direct sentences mixed with compact technical detail.
-- When explaining architecture, talk like the builder: “I split it into…”, “I kept…”, “The flow is…”, “I used…”.
-- When describing limitations, be honest: “I haven’t established that publicly”, “That part is still exploration”, “I don’t have a verified number for that here.”
-- Never manufacture confidence where the evidence is uncertain.
+FACTS:
+- You may ONLY use information present in VERIFIED EVIDENCE or the CANONICAL ANSWER.
+- Never use pretrained/general knowledge to fill gaps.
+- Never invent employers, clients, users, customers, awards, certifications, dates, salaries, rankings, performance numbers, benchmark scores, deployment claims, production scale, or future commitments.
+- Do not upgrade coursework, exploration, project brief, or source-reviewed evidence into stronger claims.
+- When the evidence does not establish something, say: “I don’t have a verified answer to that in this portfolio.”
 
-MANDATORY RESPONSE SHAPE:
-- ALWAYS start with a clear H1 heading.
-- ALWAYS include at least one H2 or H3 subheading.
-- Main information MUST be in bullet points or numbered points.
-- Use “---” as a visual topic separator whenever the answer contains more than one topic.
-- Prefer 2–4 compact sections instead of one wall of text.
-- Use bold for key technical names and important facts.
-- Render lists naturally; do not dump comma-separated mega-lists when grouping is possible.
-- For a project explanation, prefer sections such as “## What it is”, “### How I built it”, “### Stack”, “### What I verified”.
-- For education, group by areas such as “## Education”, “### Robotics & control”, “### AI & computation”.
+FORMAT:
+- ALWAYS start with an H1 heading.
+- ALWAYS include at least one H2/H3 subheading.
+- Put substantive information in bullet points or numbered points.
+- Use “---” between distinct topics.
+- Use concise sections rather than a wall of text.
+- Bold important technical names and facts.
+- For projects, prefer: “## What it is”, “### How I built it”, “### Stack”, “### What I verified”.
+- For education, group by subject areas.
 - For skills, group by domain.
-- Use Markdown tables only when comparison is genuinely clearer.
+- Use tables only when a comparison is genuinely clearer.
 
-GROUNDING CONTRACT:
-- The supplied VERIFIED ANSWER is the canonical factual answer.
-- The supplied EVIDENCE is the only source of additional facts.
-- Your task is to preserve the canonical answer’s meaning while rewriting it naturally in Vidit’s voice.
-- You may reorganize, shorten, expand with directly supported evidence, and add conversational phrasing.
-- You MUST NOT invent facts from pretrained knowledge.
-- Do not invent employers, clients, users, awards, certifications, dates, model performance, benchmark scores, funding, deployments, production scale, salaries, rankings, locations, or future commitments.
-- Do not upgrade “exploration”, “coursework”, “project brief”, or “source reviewed” into a stronger claim.
-- When the evidence is insufficient, explicitly say so.
+IMPORTANT:
+- Your job is to WRITE the final answer. Do not merely copy the canonical answer verbatim.
+- Rephrase it naturally in Vidit’s voice while preserving every factual constraint.
+- A greeting can be fully generated from the identity evidence even if the canonical answer has no specific fact.
 `;
 
 function relevantContext(question: string) {
   const query = question.toLowerCase();
   const projectFacts = portfolioFacts.projects.filter((project) => {
-    const searchable = `${project.title} ${project.description} ${project.narrative} ${project.tags.join(' ')} ${project.buildNotes}`.toLowerCase();
-    return searchable.split(/\W+/).some((word) => word.length > 3 && query.includes(word));
+    const title = project.title.toLowerCase();
+    const tags = project.tags.join(' ').toLowerCase();
+    const aliases = [
+      title,
+      ...project.title.toLowerCase().split(/[^a-z0-9]+/).filter((x) => x.length > 3),
+      ...tags.split(/[^a-z0-9]+/).filter((x) => x.length > 3),
+    ];
+    return aliases.some((term) => term && (query.includes(term) || query.includes(term.replace(/\s+/g, ''))));
   });
 
   const payload: Record<string, unknown> = {
     identity: portfolioFacts.identity,
     foundation: portfolioFacts.foundation,
     engineeringMethod: portfolioFacts.engineeringMethod,
-    canonicalAnswer: portfolioAnswer(question),
   };
 
   if (/contact|email|reach|linkedin|github/.test(query)) payload.contact = portfolioFacts.contact;
@@ -90,74 +89,114 @@ function relevantContext(question: string) {
   if (/meera|model|tier|inference|local ai|browser|llama|gguf|rag|qwen/.test(query)) payload.meeraAI = portfolioFacts.meeraAI;
   if (/robot|vision|control|plc|microcontroller|automation|iot|cctv/.test(query)) payload.domains = portfolioFacts.domains;
 
-  return JSON.stringify(payload).slice(0, 7200);
+  return JSON.stringify(payload).slice(0, 7600);
 }
 
 function sourceList(question: string) {
   const q = question.toLowerCase();
-  const matched = portfolioFacts.projects.filter((project) => {
-    const searchable = `${project.title} ${project.description} ${project.narrative} ${project.tags.join(' ')}`.toLowerCase();
-    return searchable.split(/\W+/).some((word) => word.length > 3 && q.includes(word));
-  });
+  const sources = new Set<string>(['Verified portfolio record']);
+  const aliases: Record<string, string[]> = {
+    meeraai: ['meeraai', 'meera ai', 'meera'],
+    aarnaai: ['aarnaai', 'aarna ai'],
+    airlearn: ['airlearn', 'air learn'],
+    'binance-futures': ['binance', 'futures testnet', 'testnet cli'],
+    profolio: ['profolio', 'portfolio'],
+    vision: ['vision', 'cctv'],
+  };
 
-  const sources = ['Verified portfolio facts'];
-  matched.slice(0, 4).forEach((project) => {
-    if (project.page) sources.push(project.page);
-    if (project.githubUrl) sources.push(project.githubUrl);
-  });
-
-  if (/education|degree|college|gtu|cgpa|course/.test(q)) sources.push('/dashboard');
-  if (/contact|email|linkedin|github/.test(q)) {
-    sources.push('https://github.com/viditshah5656');
-    sources.push('https://www.linkedin.com/in/rockstar5656/');
+  for (const project of portfolioFacts.projects) {
+    const key = Object.keys(aliases).find((alias) => aliases[alias].some((term) => q.includes(term)));
+    if (!key) continue;
+    if (project.page) sources.add(project.page);
+    if (project.githubUrl) sources.add(project.githubUrl);
   }
 
-  return [...new Set(sources)].slice(0, 7);
+  if (/education|degree|college|gtu|cgpa|course|subject/.test(q)) sources.add('/dashboard');
+  if (/contact|email|linkedin/.test(q)) {
+    sources.add('https://github.com/viditshah5656');
+    sources.add('https://www.linkedin.com/in/rockstar5656/');
+  }
+
+  return [...sources].slice(0, 7);
 }
 
 function normalizeMarkdown(answer: string) {
   let text = answer.trim();
   if (!text) return text;
   if (!/^#\s/m.test(text)) text = `# Here’s the answer 👋\n\n${text}`;
-  if (!/^#{2,3}\s/m.test(text)) text += `\n\n---\n\n## The key points\n`;
+  if (!/^#{2,3}\s/m.test(text)) text += `\n\n---\n\n## Key points\n- 📌 I’ve kept this answer tied to the verified portfolio evidence.`;
 
-  const lines = text.split('\n');
-  const formatted = lines.map((line) => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#') || trimmed === '---' || /^[-*+]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed) || trimmed.startsWith('```') || trimmed.startsWith('|')) return line;
-    if (/^(https?:\/\/|www\.)/.test(trimmed)) return `- 🔗 ${trimmed}`;
-    return line;
-  });
-  return formatted.join('\n');
+  return text
+    .split('\n')
+    .map((line) => {
+      const t = line.trim();
+      if (!t || t.startsWith('#') || t === '---' || /^[-*+]\s/.test(t) || /^\d+\.\s/.test(t) || t.startsWith('```') || t.startsWith('|')) return line;
+      if (/^(https?:\/\/|www\.)/.test(t)) return `- 🔗 ${t}`;
+      return line;
+    })
+    .join('\n');
 }
 
-function looksGrounded(draft: string, canonical: string, context: string): boolean {
+function validateGeneratedAnswer(draft: string, context: string, question: string) {
   const clean = draft.trim();
-  if (!clean || clean.length < 30) return false;
+  if (!clean || clean.length < 24) return false;
 
-  const canonicalWords = canonical.toLowerCase().split(/\W+/).filter((w) => w.length > 4);
-  const draftLower = clean.toLowerCase();
-  const supportedWords = new Set(context.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
-  const overlap = canonicalWords.filter((w) => draftLower.includes(w) && supportedWords.has(w)).length;
-  const overlapRatio = canonicalWords.length ? overlap / Math.min(canonicalWords.length, 30) : 0;
+  const lower = clean.toLowerCase();
+  const evidence = context.toLowerCase();
+  const questionLower = question.toLowerCase();
 
-  const unsupportedRisk = [
-    /\b(ceo|founder|employee|employed|client|clients|users?|customer|revenue|salary|award|awards|patent|funding|investor|million|billion|viral|production-ready)\b/i,
-    /\b\d{2,3}%\b/,
-    /\b(top|best|leading|world-class|expert|senior)\b/i,
+  const dangerous = [
+    /\b(ceo|founder|co-founder|employee|employed|client|clients|customer|customers|revenue|salary|funding|investor|patent|award|awards|million|billion|users?)\b/i,
+    /\b\d+(?:\.\d+)?%\b/i,
+    /\b(top|best|leading|world-class|expert|senior|industry-leading)\b/i,
   ];
-  if (unsupportedRisk.some((pattern) => pattern.test(clean) && !pattern.test(canonical))) return false;
+  if (dangerous.some((pattern) => pattern.test(clean) && !pattern.test(evidence))) return false;
 
-  return overlapRatio >= 0.20 || canonical.length < 120;
+  // Greetings do not need a factual overlap test; they are still model-generated.
+  if (/\b(hi|hello|hey|yo|sup|what'?s\s*up|whatsup)\b/i.test(questionLower)) return true;
+
+  const evidenceTerms = new Set(evidence.split(/\W+/).filter((term) => term.length >= 5));
+  const draftTerms = lower.split(/\W+/).filter((term) => term.length >= 5);
+  const supported = draftTerms.filter((term) => evidenceTerms.has(term)).length;
+  const ratio = draftTerms.length ? supported / Math.min(draftTerms.length, 60) : 0;
+
+  return ratio >= 0.08;
 }
 
-async function loadModel(emit: (event: PortfolioStreamEvent) => void): Promise<MLCEngine> {
-  if (!enginePromise) {
-    enginePromise = CreateMLCEngine(MODEL_ID, {
-      initProgressCallback: (progress: InitProgressReport) => emit({ event: 'model-loading', data: progress.text }),
-      logLevel: 'WARN',
-    }, { context_window_size: CONTEXT_WINDOW });
-  }
+async function initializeModel(emit: (event: PortfolioStreamEvent) => void): Promise<MLCEngine> {
+  if (enginePromise) return enginePromise;
+
+  enginePromise = (async () => {
+    const candidates = [PRIMARY_MODEL_ID, FALLBACK_MODEL_ID];
+    let lastError: unknown = null;
+
+    for (const modelId of candidates) {
+      try {
+        emit({ event: 'model-loading', data: `Loading local model: ${modelId}` });
+        const engine = await CreateMLCEngine(
+          modelId,
+          {
+            initProgressCallback: (progress: InitProgressReport) => emit({ event: 'model-loading', data: progress.text }),
+            logLevel: 'WARN',
+          },
+          { context_window_size: CONTEXT_WINDOW },
+        );
+        activeModelId = modelId;
+        emit({ event: 'model-ready', data: `${modelId} ready · ${CONTEXT_WINDOW}-token context` });
+        return engine;
+      } catch (error) {
+        lastError = error;
+        const detail = error instanceof Error ? error.message : String(error);
+        emit({ event: 'error', data: `${modelId} failed: ${detail}` });
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error('No local WebLLM model could be initialized.');
+  })().catch((error) => {
+    enginePromise = null;
+    throw error;
+  });
+
   return enginePromise;
 }
 
@@ -167,29 +206,30 @@ export async function streamPortfolioQuestion(question: string, emit: (event: Po
     return { answer: normalizeMarkdown(outOfScopeReply), mode: 'portfolio', sources: ['Portfolio scope'] };
   }
 
-  const verifiedAnswer = portfolioAnswer(question).trim();
-  const canonical = verifiedAnswer || "I don't have a verified answer to that in this portfolio.";
   const context = relevantContext(question);
+  const canonicalRaw = portfolioAnswer(question).trim();
+  const isGreeting = /\b(hi|hello|hey|yo|sup|what'?s\s*up|whatsup)\b/i.test(question);
+  const canonical = isGreeting ? 'Greeting acknowledged. No additional portfolio claim is required.' : (canonicalRaw || "I don't have a verified answer to that in this portfolio.");
   const sources = sourceList(question);
 
   emit({ event: 'scope', data: 'Accepted: personal-portfolio question.' });
-  emit({ event: 'retrieval', data: 'Selecting verified facts relevant to this question.' });
-  emit({ event: 'grounding', data: `Canonical answer locked · ${CONTEXT_WINDOW}-token context · no external knowledge.` });
+  emit({ event: 'retrieval', data: 'Selecting the smallest relevant set of verified portfolio evidence.' });
+  emit({ event: 'grounding', data: `Evidence locked · ${CONTEXT_WINDOW}-token context · no external knowledge.` });
 
   try {
-    const engine = await loadModel(emit);
+    const engine = await initializeModel(emit);
     let draft = '';
-
-    const prompt = `${personaRules}\n\nCANONICAL VERIFIED ANSWER:\n${canonical}\n\nVERIFIED EVIDENCE:\n${context}\n\nVISITOR QUESTION:\n${question}\n\nRewrite the canonical answer as Vidit speaking naturally to the visitor. Preserve its factual meaning. Keep the answer concise but useful. Use a friendly greeting only when the visitor greets. Use tasteful emojis. Use H1 + H2/H3 + bullet points + “---” topic separators. Never add a fact.`;
+    const prompt = `${personaRules}\n\nCANONICAL ANSWER:\n${canonical}\n\nVERIFIED EVIDENCE:\n${context}\n\nVISITOR QUESTION:\n${question}\n\nWrite the final answer now. This MUST be a freshly generated response from the local language model, not a copy of the canonical answer. Keep every factual statement within the evidence.\n\nBefore generating, silently check that every claim can be supported by the evidence. Do not reveal hidden reasoning; output only the finished answer.`;
 
     const reply = await engine.chat.completions.create({
       messages: [
         { role: 'system', content: prompt },
         { role: 'user', content: question },
       ],
-      temperature: 0.02,
-      top_p: 0.65,
-      max_tokens: 300,
+      temperature: 0.12,
+      top_p: 0.80,
+      repetition_penalty: 1.05,
+      max_tokens: 280,
       stream: true,
     });
 
@@ -200,30 +240,35 @@ export async function streamPortfolioQuestion(question: string, emit: (event: Po
       emit({ event: 'token', data: token });
     }
 
-    emit({ event: 'grounding', data: 'Validating the draft against the canonical answer and evidence.' });
-    const grounded = looksGrounded(draft, canonical, context);
-    const answer = grounded ? normalizeMarkdown(draft) : normalizeMarkdown(canonical);
-
-    if (!grounded) {
-      emit({ event: 'grounding', data: 'Model draft was too risky or weakly grounded; deterministic portfolio answer used.' });
-      emit({ event: 'complete', data: 'Safe verified portfolio response ready.' });
+    emit({ event: 'grounding', data: 'Checking the generated wording against the verified evidence.' });
+    if (!validateGeneratedAnswer(draft, context, question)) {
+      emit({ event: 'grounding', data: 'Generated draft failed the grounding gate; no unsupported claims will be shown.' });
+      emit({ event: 'complete', data: 'Grounding gate blocked the draft.' });
       return {
-        answer,
+        answer: normalizeMarkdown("# I don’t want to guess 👋\n\n## What I can verify\n- 📌 I only want to give you information that is established by this portfolio.\n- 🔎 I couldn’t safely verify the wording the local model produced for that question.\n\n---\n\nAsk me about **my projects, education, skills, engineering work, or public contact details**."),
         mode: 'portfolio',
-        notice: 'I kept this response strictly tied to verified portfolio evidence.',
+        notice: 'The local model generated a draft, but the grounding gate blocked unsupported wording.',
         sources,
+        model: activeModelId || undefined,
       };
     }
 
-    emit({ event: 'complete', data: 'Persona-matched, evidence-constrained response ready.' });
-    return { answer, mode: 'verified-response', sources: [...sources, `Local Qwen2.5-0.5B · ${CONTEXT_WINDOW} context`] };
-  } catch {
-    emit({ event: 'grounding', data: 'Local model unavailable; deterministic verified answer selected.' });
-    emit({ event: 'complete', data: 'Verified portfolio response ready.' });
+    const answer = normalizeMarkdown(draft);
+    emit({ event: 'complete', data: `Fresh model response ready · ${activeModelId || PRIMARY_MODEL_ID}.` });
     return {
-      answer: normalizeMarkdown(canonical),
+      answer,
+      mode: 'verified-response',
+      sources: [...sources, `${activeModelId || PRIMARY_MODEL_ID} · WebLLM · ${CONTEXT_WINDOW} context`],
+      model: activeModelId || undefined,
+    };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    emit({ event: 'error', data: `Local generation unavailable: ${detail}` });
+    emit({ event: 'complete', data: 'Generation could not be completed locally.' });
+    return {
+      answer: normalizeMarkdown(`# Local model unavailable 🔧\n\n## What happened\n- 🧠 I couldn’t initialize the on-device language model in this browser.\n- 📌 I’m not going to fake a model-written response by silently substituting canned text.\n\n---\n\n## Try again\n- Refresh the page and reopen the chat so WebGPU can initialize cleanly.`),
       mode: 'portfolio',
-      notice: 'The local model was unavailable, so I kept this strictly grounded in the portfolio record.',
+      notice: `Local WebLLM initialization failed: ${detail}`,
       sources,
     };
   }
