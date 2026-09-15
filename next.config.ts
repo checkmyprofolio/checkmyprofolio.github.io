@@ -34,6 +34,7 @@ export default function createNextConfig(phase: string): NextConfig {
 
   return {
     output: 'export',
+    basePath: '/checkmyprofolio.github.io',
     reactStrictMode: true,
     poweredByHeader: false,
     distDir: isDev ? '.next-dev' : '.next',
@@ -45,6 +46,7 @@ export default function createNextConfig(phase: string): NextConfig {
       return config;
     },
     images: {
+      unoptimized: true,
       remotePatterns: [
         {
           protocol: 'https',
