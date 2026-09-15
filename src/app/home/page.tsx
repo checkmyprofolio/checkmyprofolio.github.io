@@ -1,6 +1,5 @@
 'use client';
 import { HeroSection } from '@/components/sections/hero-section';
-import { PortfolioAssistantV2 } from '@/components/portfolio-assistant-v2';
 import { useIsDesktop } from '@/hooks/use-is-desktop';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
@@ -26,7 +25,6 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <PortfolioAssistantV2 />
     </>
   );
 }
