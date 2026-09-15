@@ -42,6 +42,10 @@ function relevantContext(question: string) {
   return JSON.stringify(payload).slice(0, 2000);
 }
 
+export function preloadModel() {
+  loadModel(() => {}); // start loading silently
+}
+
 async function loadModel(emit: (event: PortfolioStreamEvent) => void): Promise<MLCEngine> {
   if (!enginePromise) {
     enginePromise = CreateMLCEngine(MODEL_ID, {

@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react';
 import { Header } from './header';
 import { Logo } from './logo';
+import { preloadModel } from '@/lib/portfolio-local-assistant';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [hasScrolled, setHasScrolled] = useState(false);
 
   useEffect(() => {
+    // Start pre-loading the AI model into VRAM immediately so chat is instant.
+    preloadModel();
     const updateScrollState = () => setHasScrolled(window.scrollY > 12);
     updateScrollState();
     window.addEventListener('scroll', updateScrollState, { passive: true });

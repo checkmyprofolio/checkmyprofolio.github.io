@@ -52,7 +52,9 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
 
     try {
       const data = await streamPortfolioQuestion(question, (event) => {
-        setStreamEvents((events) => [...events.slice(-7), event]);
+        if (event.event !== 'model-loading') {
+          setStreamEvents((events) => [...events.slice(-7), event]);
+        }
         if (event.event === 'model-loading') setLoadingModel(true);
         if (event.event === 'token') {
           setLoadingModel(false);
