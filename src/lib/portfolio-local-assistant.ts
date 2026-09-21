@@ -1,8 +1,8 @@
 import { CreateMLCEngine, InitProgressReport, MLCEngine } from '@mlc-ai/web-llm';
 import { portfolioFacts, portfolioAnswer } from './portfolio-knowledge';
 
-// MLC currently provides Llama 3.2 1B and 3B variants; 3B is the closest current Llama option to the requested ~2B size.
-export const MODEL_ID = 'Llama-3.2-3B-Instruct-q4f16_1-MLC';
+// Keep the browser model genuinely small: the 1B q4f16 build is a low-resource WebLLM model and is much more practical for a portfolio site.
+export const MODEL_ID = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
 export const CONTEXT_WINDOW = 1024;
 
 export type PortfolioStreamEvent = {
@@ -141,7 +141,9 @@ function normalizeMarkdown(answer: string): string {
 async function loadModel(emit: (event: PortfolioStreamEvent) => void): Promise<MLCEngine> {
   if (!enginePromise) {
     enginePromise = (async () => {
-      emit({ event: 'model-loading', data: `Loading ${MODEL_ID}…` });
+      if (typeof window === 'undefined') throw new Error('Local model can only run in the browser.');
+      if (!('gpu' in navigator)) throw new Error('WebGPU is not available in this browser. Open the portfolio in a WebGPU-capable browser.');
+      emit({ event: 'model-loading', data: `Loading ${MODEL_ID} locally in this browser…` });
       const engine = await CreateMLCEngine(
         MODEL_ID,
         {
@@ -150,7 +152,7 @@ async function loadModel(emit: (event: PortfolioStreamEvent) => void): Promise<M
         },
         { context_window_size: CONTEXT_WINDOW, prefill_chunk_size: 128 },
       );
-      emit({ event: 'model-ready', data: `${MODEL_ID} ready · ${CONTEXT_WINDOW}-token context` });
+      emit({ event: 'model-ready', data: `${MODEL_ID} ready · ${CONTEXT_WINDOW}-token context · browser-local` });
       return engine;
     })().catch((error) => {
       enginePromise = null;
