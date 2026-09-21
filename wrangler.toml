@@ -1,0 +1,6 @@
+name = "checkmyprofolio-github-io"
+main = "worker/src/index.ts"
+compatibility_date = "2026-09-22"
+
+[ai]
+binding = "AI"
