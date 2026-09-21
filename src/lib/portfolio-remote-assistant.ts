@@ -33,21 +33,20 @@ function evidence(question:string):string{
 function sourceList(question:string):string[]{const q=question.toLowerCase();const s=new Set<string>(['Verified portfolio record']);for(const p of portfolioFacts.projects){const t=`${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();if(t.split(/\\W+/).some(term=>term.length>3&&q.includes(term))){if(p.page)s.add(p.page);if(p.githubUrl&&p.githubUrl!=='#')s.add(p.githubUrl);}}return [...s].slice(0,7);}
 function normalize(answer:string){const t=answer.trim();return /^#\\s/m.test(t)?t:`# Here’s the answer 👋\\n\\n${t}`;}
 
-export async function streamPortfolioQuestion(question:string,emit:(event:PortfolioStreamEvent)=>void):Promise<RemotePortfolioAnswer>{
- if(!scopePattern.test(question)){emit({event:'scope',data:'Rejected: outside the personal-portfolio scope.'});return{answer:outOfScopeReply,mode:'scope',sources:['Portfolio scope']};}
- emit({event:'scope',data:'Accepted: personal-portfolio question.'});
- emit({event:'retrieval',data:'Selecting verified portfolio evidence.'});
+export async function streamPortfolioQuestion(question:string,emit:(event:PortfolioStreamEvent)=>void,history:Array<{role:'user'|'assistant';content:string}> = []):Promise<RemotePortfolioAnswer>{
+ emit({event:'scope',data:'The remote model will decide whether this question is answerable.'});
+ emit({event:'retrieval',data:'Sending relevant verified portfolio context.'});
  emit({event:'model-loading',data:'Sending the question to the remote GPU inference server…'});
  try{
-  const response=await fetch(PORTFOLIO_AI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,evidence:evidence(question),source:'checkmyprofolio.github.io'})});
+  const response=await fetch(PORTFOLIO_AI_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question,evidence:evidence(question),history:history.slice(-8),source:'checkmyprofolio.github.io'})});
   if(!response.ok){const detail=await response.text().catch(()=> '');throw new Error(`Remote AI server returned HTTP ${response.status}${detail?`: ${detail.slice(0,180)}`:''}`);}
-  const data=await response.json() as {answer?:string;model?:string};
+  const data=await response.json() as {answer?:string;model?:string;decision?:'answer'|'refuse';style?:string;evidenceConstrained?:boolean};
   if(!data.answer?.trim())throw new Error('Remote GPU model returned an empty response.');
-  emit({event:'model-ready',data:`${data.model||MODEL_ID} · server-side inference`});
+  emit({event:'model-ready',data:`${data.model||MODEL_ID} · server-side inference · ${data.decision||'decision'}`});
   emit({event:'token',data:data.answer});
-  emit({event:'grounding',data:'Response generated from verified portfolio evidence.'});
+  emit({event:'grounding',data:data.evidenceConstrained?'Answer constrained to verified portfolio evidence.':'Model response received.'});
   emit({event:'complete',data:'Remote model response ready.'});
-  return{answer:normalize(data.answer),mode:'model-generated',sources:[...sourceList(question),`${data.model||MODEL_ID} · remote GPU`],model:data.model||MODEL_ID};
+  return{answer:normalize(data.answer),mode:data.decision==='refuse'?'scope':'model-generated',sources:[...sourceList(question),`${data.model||MODEL_ID} · remote GPU`],model:data.model||MODEL_ID};
  }catch(error){
   const detail=error instanceof Error?error.message:String(error);emit({event:'error',data:detail});emit({event:'complete',data:'Remote generation failed.'});
   return{answer:`# Remote AI is not connected yet 🔧
