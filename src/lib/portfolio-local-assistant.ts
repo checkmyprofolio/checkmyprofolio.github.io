@@ -114,7 +114,7 @@ function sourceList(question: string): string[] {
   for (const project of portfolioFacts.projects) {
     const text = `${project.title} ${project.description} ${project.tags.join(' ')}`.toLowerCase();
     if (text.split(/\W+/).some((term) => term.length > 3 && q.includes(term))) {
-      if (project.internalHref) sources.add(project.internalHref);
+      if (project.page) sources.add(project.page);
       if (project.githubUrl && project.githubUrl !== '#') sources.add(project.githubUrl);
     }
   }
