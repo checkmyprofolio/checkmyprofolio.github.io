@@ -148,7 +148,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       if (cancelled) return;
       setStreamEvents((events) => [...events.slice(-6), event]);
       if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
-    }).catch(() => { if (!cancelled) setModelLoading(false); });
+    }).catch((exception) => { if (!cancelled) { setModelLoading(false); setModelReady(false); setError(exception instanceof Error ? `Local model could not start: ${exception.message}` : 'Local model could not start.'); } });
     return () => { cancelled = true; };
   }, []);
 
@@ -222,7 +222,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{modelReady ? `Local ${MODEL_ID} ready · ${CONTEXT_WINDOW}-token context · model-generated` : 'Loading local Llama model…'}</p>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{modelReady ? `Local ${MODEL_ID} ready · ${CONTEXT_WINDOW}-token context · browser-local` : modelLoading ? 'Loading local Llama model…' : 'Local model unavailable — see the message above'}</p>
     </div>
   </>;
 }
