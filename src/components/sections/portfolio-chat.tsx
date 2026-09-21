@@ -21,7 +21,7 @@ type Message = {
 
 const welcome: Message = {
   role: 'assistant',
-  content: `# What’s up 👋\n\n## Welcome to my portfolio\n- 🤖 Ask me about **my projects and engineering work**.\n- 🧠 Ask about **MeeraAI, local AI, robotics, or software systems**.\n- 🎓 Ask about **my education, skills, and engineering background**.\n- 📫 Ask for my **public contact details**.\n\n---\n\nI’ll talk to you like **Vidit**, not like a support bot — and I’ll generate the answer locally from the portfolio evidence.`,
+  content: `# What’s up 👋\n\n## Welcome to my portfolio\n- 🤖 Ask me about **my projects and engineering work**.\n- 🧠 Ask about **MeeraAI, local AI, robotics, or software systems**.\n- 🎓 Ask about **my education, skills, and engineering background**.\n- 📫 Ask for my **public contact details**.\n\n---\n\nI’ll talk to you like **Vidit**, not like a support bot — and the remote model will decide how to answer from verified portfolio evidence.`,
 };
 
 const prompts = [
@@ -121,7 +121,7 @@ function ThinkingPanel({ events, modelLoading }: { events: PortfolioStreamEvent[
     <div className="flex items-center gap-2 border-b border-primary/10 px-3 py-2.5">
       <div className="relative h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-60" /><span className="relative block h-2 w-2 rounded-full bg-primary" /></div>
       <span className="text-xs font-semibold text-primary">Thinking</span>
-      <span className="text-[10px] text-muted-foreground">{modelLoading ? 'Loading my local model…' : 'Checking my portfolio evidence…'}</span>
+      <span className="text-[10px] text-muted-foreground">{modelLoading ? 'Letting the remote model decide…' : 'Checking my portfolio evidence…'}</span>
     </div>
     <div className="px-3 py-2.5 font-mono text-[10px] leading-4 text-muted-foreground">{visible.map((event, index) => <div key={`${event.event}-${index}`} className="flex items-start gap-2"><span className="shrink-0 text-primary">{event.event}</span><span className="truncate">{event.data}</span></div>)}</div>
     <div className="portfolio-thinking-shimmer h-[2px] w-full" />
@@ -166,7 +166,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         if (event.event === 'model-loading') setModelLoading(true);
         if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
         if (event.event === 'token') { setModelLoading(false); setDraftAnswer((prev) => prev + event.data); }
-      });
+      }, history.slice(0, -1));
       setMessages([...history, { role: 'assistant', content: data.answer, mode: data.mode, notice: data.notice, sources: data.sources }]);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'I hit a local model error.');
@@ -218,7 +218,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{busy ? 'Remote GPU inference…' : `Server-side ${MODEL_ID} · no device inference`}</p>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{busy ? 'Remote GPU inference · model deciding…' : `Server-side ${MODEL_ID} · model-controlled · no device inference`}</p>
     </div>
   </>;
 }
