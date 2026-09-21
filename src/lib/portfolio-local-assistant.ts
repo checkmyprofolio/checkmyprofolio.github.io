@@ -150,7 +150,7 @@ async function loadModel(emit: (event: PortfolioStreamEvent) => void): Promise<M
           initProgressCallback: (progress: InitProgressReport) => emit({ event: 'model-loading', data: progress.text }),
           logLevel: 'WARN',
         },
-        { context_window_size: CONTEXT_WINDOW, prefill_chunk_size: 128 },
+        { context_window_size: CONTEXT_WINDOW },
       );
       emit({ event: 'model-ready', data: `${MODEL_ID} ready · ${CONTEXT_WINDOW}-token context · browser-local` });
       return engine;
