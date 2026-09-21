@@ -87,17 +87,17 @@ function relevantEvidence(question: string): string {
     evidence.meeraAI = portfolioFacts.meeraAI;
   }
   if (matched.length) {
-    evidence.projects = matched.map(({ title, description, narrative, tags, buildNotes, githubUrl, internalHref }) => ({
+    evidence.projects = matched.map(({ title, description, narrative, tags, buildNotes, githubUrl, page }) => ({
       title,
       description,
       narrative,
       tags,
       buildNotes,
       githubUrl: githubUrl === '#' ? undefined : githubUrl,
-      page: internalHref,
+      page,
     }));
   } else if (/project|work|built|build|portfolio/.test(q)) {
-    evidence.projects = portfolioFacts.projects.slice(0, 6).map(({ title, description, tags, internalHref }) => ({ title, description, tags, page: internalHref }));
+    evidence.projects = portfolioFacts.projects.slice(0, 6).map(({ title, description, tags, page }) => ({ title, description, tags, page }));
   }
 
   if (/^(hi|hello|hey|yo|sup|what'?s\s*up|whatsup)\b/i.test(q.trim())) {
