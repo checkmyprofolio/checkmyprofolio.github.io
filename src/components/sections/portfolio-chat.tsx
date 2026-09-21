@@ -144,90 +144,6 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [messages, busy, streamEvents, draftAnswer]);
 
   useEffect(() => {
-    let cancelled = false;
-    setModelLoading(true);
-    warmPortfolioModel((event) => {
-      if (cancelled) return;
-      setStreamEvents((events) => [...events.slice(-6), event]);
-      if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
-    }).catch((exception) => { if (!cancelled) { setModelLoading(false); setModelReady(false); setError(exception instanceof Error ? `Local model could not start: ${exception.message}` : 'Local model could not start.'); } });
-    return () => { cancelled = true; };
-  }, []);
-
-  async function send(text: string) {
-    const question = text.trim();
-    if (!question || sending.current || question.length > 2000) return;
-    sending.current = true;
-    const history = [...messages, { role: 'user' as const, content: question }];
-    setMessages(history);
-    setInput('');
-    setBusy(true);
-    setModelLoading(false);
-    setStreamEvents([]);
-    setDraftAnswer('');
-    setError('');
-    try {
-      const data = await streamPortfolioQuestion(question, (event) => {
-        setStreamEvents((events) => [...events.slice(-7), event]);
-        if (event.event === 'model-loading') setModelLoading(true);
-        if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
-        if (event.event === 'token') { setModelLoading(false); setDraftAnswer((prev) => prev + event.data); }
-      });
-      setMessages([...history, { role: 'assistant', content: data.answer, mode: data.mode, notice: data.notice, sources: data.sources }]);
-    } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'I hit a local model error.');
-      setMessages(history.slice(0, -1));
-      setInput(question);
-    } finally {
-      sending.current = false;
-      setBusy(false);
-      setModelLoading(false);
-      setDraftAnswer('');
-    }
-  }
-
-  return <>
-    <div className="flex items-center justify-between border-b border-slate-500/10 bg-white/20 px-5 py-4 dark:border-white/10 dark:bg-white/[0.025]">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="rounded-2xl border border-primary/20 bg-primary/15 p-2.5 text-primary"><Bot className="h-6 w-6" /></div>
-        <div className="min-w-0"><h2 className="font-headline font-bold">Ask my portfolio</h2><p className="truncate text-xs text-muted-foreground">Vidit Shah · Projects &amp; engineering</p></div>
-      </div>
-      <div className="flex shrink-0">
-        <Button variant="ghost" size="icon" disabled={busy} aria-label="Start a new conversation" onClick={() => { setMessages([welcome]); setError(''); setInput(''); setStreamEvents([]); }}><RotateCcw className="h-4 w-4" /></Button>
-        {onClose && <Button variant="ghost" size="icon" aria-label="Close chat" onClick={onClose}><X className="h-5 w-5" /></Button>}
-      </div>
-    </div>
-
-    <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5" role="log" aria-live="polite" aria-label="Conversation">
-      <div className="space-y-5">
-        {messages.map((message, index) => <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-          <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
-            {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh local model response · evidence constrained</p>}
-            {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">📌 Portfolio-only scope</p>}
-            {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">⚠️ Local model response unavailable</p>}
-            {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
-            {message.sources && <SourceList sources={message.sources} />}
-          </div>
-        </div>)}
-        {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]"><ThinkingPanel events={streamEvents} modelLoading={modelLoading} />{draftAnswer && <div className="rounded-2xl rounded-bl-sm border border-white/50 bg-white/45 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.055]"><RichMarkdown content={draftAnswer} /></div>}</div></div>}
-      </div>
-
-      {messages.length === 1 && <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">{prompts.map((prompt) => <button key={prompt} onClick={() => send(prompt.replace(/^[^ ]+\s/, ''))} disabled={busy} className="flex items-center justify-between gap-2 rounded-2xl border border-white/50 bg-white/30 px-3 py-3 text-left text-xs transition-colors hover:border-primary/50 hover:bg-primary/10 dark:border-white/10 dark:bg-white/[0.035]">{prompt}<ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" /></button>)}</div>}
-      <div ref={end} />
-    </div>
-
-    <div className="shrink-0 border-t border-slate-500/10 bg-white/25 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 dark:border-white/10 dark:bg-white/[0.025]">
-      {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
-      <form onSubmit={(event) => { event.preventDefault(); send(input); }} className="flex items-end gap-2">
-        <label htmlFor="portfolio-question" className="sr-only">Your question</label>
-        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
-        <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
-      </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{busy ? 'Remote GPU inference…' : `Server-side ${MODEL_ID} · no device inference`}</p>
-    </div>
-  </>;
-}  useEffect(() => {
     setModelLoading(false);
     setModelReady(true);
   }, []);
@@ -281,9 +197,9 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         {messages.map((message, index) => <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh local model response · evidence constrained</p>}
+            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh server-side model response · evidence constrained</p>}
             {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">📌 Portfolio-only scope</p>}
-            {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">⚠️ Local model response unavailable</p>}
+            {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">⚠️ Remote model response unavailable</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
             {message.sources && <SourceList sources={message.sources} />}
           </div>
@@ -302,7 +218,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{modelReady ? `Local ${MODEL_ID} ready · ${CONTEXT_WINDOW}-token context · browser-local` : modelLoading ? 'Loading local Llama model…' : 'Local model unavailable — see the message above'}</p>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{busy ? 'Remote GPU inference…' : `Server-side ${MODEL_ID} · no device inference`}</p>
     </div>
   </>;
 }
