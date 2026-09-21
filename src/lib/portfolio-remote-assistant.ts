@@ -2,7 +2,7 @@ import { portfolioFacts } from './portfolio-knowledge';
 
 export const MODEL_ID = '@cf/meta/llama-3.2-1b-instruct';
 export const CONTEXT_WINDOW = 2048;
-export const PORTFOLIO_AI_ENDPOINT = process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT || 'https://portfolio-ai.workers.dev';
+export const PORTFOLIO_AI_ENDPOINT = process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT || 'https://checkmyprofolio-github-io.workers.dev';
 
 export type PortfolioStreamEvent = { event: 'scope'|'retrieval'|'model-loading'|'model-ready'|'token'|'grounding'|'complete'|'error'; data: string };
 export type RemotePortfolioAnswer = { answer:string; mode:'model-generated'|'scope'|'error'; notice?:string; sources:string[]; model?:string };
