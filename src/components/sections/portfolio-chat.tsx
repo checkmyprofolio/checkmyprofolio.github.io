@@ -97,8 +97,10 @@ function RichMarkdown({ content }: { content: string }) {
     if (!t) { flush(); pushTable(); return; }
     paragraph.push(t);
   });
-  const finalCodeText: string | null = code === null ? null : code.join('\n');
-  if (finalCodeText !== null) blocks.push(<pre key="code-final" className="overflow-x-auto rounded-xl border border-slate-500/15 bg-slate-950/5 p-3 text-xs dark:border-white/10 dark:bg-black/25"><code>{finalCodeText}</code></pre>);
+  if (code !== null) {
+    const renderedCode = (code as string[]).join('\n');
+    blocks.push(<pre key="code-final" className="overflow-x-auto rounded-xl border border-slate-500/15 bg-slate-950/5 p-3 text-xs dark:border-white/10 dark:bg-black/25"><code>{renderedCode}</code></pre>);
+  }
   flush(); pushTable();
   return <div className="space-y-3 text-sm text-foreground">{blocks}</div>;
 }
