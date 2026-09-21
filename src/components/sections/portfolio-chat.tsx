@@ -197,7 +197,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         {messages.map((message, index) => <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh server-side model response · evidence constrained</p>}
+            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh server-side LLM response · model decided scope & style</p>}
             {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">📌 Portfolio-only scope</p>}
             {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">⚠️ Remote model response unavailable</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
@@ -218,7 +218,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{busy ? 'Remote GPU inference · model deciding…' : `Server-side ${MODEL_ID} · model-controlled · no device inference`}</p>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{busy ? 'Remote GPU inference · model deciding…' : `Server-side ${MODEL_ID} · LLM decides · no device inference`}</p>
     </div>
   </>;
 }
