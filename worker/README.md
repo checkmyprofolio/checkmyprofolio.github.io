@@ -8,3 +8,5 @@ Deployment requires a Cloudflare account with Workers AI enabled and:
 
 Deploy:
 npx wrangler deploy --config worker/wrangler.toml
+
+This file is intentionally kept under worker/ so the backend deployment workflow runs whenever the backend is changed.
