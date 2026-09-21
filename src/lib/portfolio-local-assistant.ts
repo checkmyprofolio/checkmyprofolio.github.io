@@ -160,6 +160,10 @@ async function loadModel(emit: (event: PortfolioStreamEvent) => void): Promise<M
   return enginePromise;
 }
 
+export async function warmPortfolioModel(emit: (event: PortfolioStreamEvent) => void = () => undefined): Promise<MLCEngine> {
+  return loadModel(emit);
+}
+
 export async function streamPortfolioQuestion(question: string, emit: (event: PortfolioStreamEvent) => void): Promise<LocalPortfolioAnswer> {
   if (!scopePattern.test(question)) {
     emit({ event: 'scope', data: 'Rejected: outside the personal-portfolio scope.' });
