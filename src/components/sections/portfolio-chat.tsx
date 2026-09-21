@@ -9,7 +9,7 @@ import {
   MODEL_ID,
   CONTEXT_WINDOW,
   type PortfolioStreamEvent,
-} from '@/lib/portfolio-local-assistant';
+} from '@/lib/portfolio-remote-assistant';
 
 type Message = {
   role: 'user' | 'assistant';
