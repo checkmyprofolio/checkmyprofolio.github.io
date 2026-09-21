@@ -39,7 +39,8 @@ function parseDecision(raw: string): Decision | null {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Max-Age': '86400' } });
+    if (request.method === 'GET') return json({ ok: true, service: 'portfolio-ai', model: MODEL, inference: 'server-side' });
     if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
 
     try {
