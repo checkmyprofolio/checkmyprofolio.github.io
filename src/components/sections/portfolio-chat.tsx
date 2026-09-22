@@ -209,7 +209,7 @@ function AssistantHeader({ sources = [] }: { sources?: PortfolioCitation[] }) {
           Profolio AI 🤖
         </span>
         <span className="hidden text-[10px] text-muted-foreground/60 sm:inline">
-          · server response ⚡
+          · live response ⚡
         </span>
       </div>
       <div className="ml-auto">
@@ -242,12 +242,43 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   const [streamEvents, setStreamEvents] = useState<PortfolioStreamEvent[]>([]);
   const [error, setError] = useState('');
   const [streamSources, setStreamSources] = useState<PortfolioCitation[]>([]);
+  const [draftAnswer, setDraftAnswer] = useState('');
   const end = useRef<HTMLDivElement>(null);
   const sending = useRef(false);
+  const tokenBuffer = useRef('');
+  const tokenFrame = useRef<number | null>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-  }, [messages, busy]);
+  }, [messages, busy, draftAnswer]);
+
+  useEffect(() => {
+    return () => {
+      if (tokenFrame.current !== null) cancelAnimationFrame(tokenFrame.current);
+    };
+  }, []);
+
+  const queueToken = (token: string) => {
+    tokenBuffer.current += token;
+    if (tokenFrame.current !== null) return;
+
+    tokenFrame.current = requestAnimationFrame(() => {
+      const next = tokenBuffer.current;
+      tokenBuffer.current = '';
+      tokenFrame.current = null;
+      if (next) setDraftAnswer((prev) => prev + next);
+    });
+  };
+
+  const flushTokens = () => {
+    if (tokenFrame.current !== null) {
+      cancelAnimationFrame(tokenFrame.current);
+      tokenFrame.current = null;
+    }
+    const remaining = tokenBuffer.current;
+    tokenBuffer.current = '';
+    if (remaining) setDraftAnswer((prev) => prev + remaining);
+  };
 
   useEffect(() => {
     let active = true;
@@ -274,14 +305,29 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     setModelLoading(true);
     setStreamEvents([]);
     setStreamSources([]);
+    tokenBuffer.current = '';
+    if (tokenFrame.current !== null) {
+      cancelAnimationFrame(tokenFrame.current);
+      tokenFrame.current = null;
+    }
+    setDraftAnswer('');
     setError('');
     try {
       const data = await streamPortfolioQuestion(question, (event) => {
-        setStreamEvents((events) => [...events.slice(-5), event]);
+        if (event.event !== 'token') {
+          setStreamEvents((events) => [...events.slice(-5), event]);
+        }
+
+        if (event.event === 'token') {
+          setModelLoading(false);
+          queueToken(event.data);
+        }
+
         if (event.event === 'complete') {
           setModelLoading(false);
           setModelReady(true);
         }
+
         if (event.event === 'citation') {
           try {
             const citation = JSON.parse(event.data) as PortfolioCitation;
@@ -296,16 +342,29 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           }
         }
       }, history.slice(0, -1));
-      setMessages([...history, { role: 'assistant', content: data.answer, mode: data.mode, notice: data.notice, sources: data.sources }]);
+
+      flushTokens();
+      setDraftAnswer('');
+      setMessages([
+        ...history,
+        {
+          role: 'assistant',
+          content: data.answer,
+          mode: data.mode,
+          notice: data.notice,
+          sources: data.sources,
+        },
+      ]);
     } catch (exception) {
       setError(exception instanceof Error ? exception.message : 'I hit a local model error.');
       setMessages(history.slice(0, -1));
       setInput(question);
     } finally {
+      flushTokens();
       sending.current = false;
       setBusy(false);
       setModelLoading(false);
-     }
+    }
   }
 
   return <>
@@ -333,7 +392,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
 
           </div>
         </div>)}
-        {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]"><ThinkingPanel events={streamEvents} modelLoading={modelLoading} /></div></div>}
+        {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]">{!draftAnswer && <ThinkingPanel events={streamEvents} modelLoading={modelLoading} />}{draftAnswer && <div className="w-full rounded-2xl rounded-bl-sm border border-white/50 bg-white/45 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.055]"><AssistantHeader sources={streamSources} /><div className="whitespace-pre-wrap break-words text-sm leading-6 text-foreground">{draftAnswer}<span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-primary align-[-2px]" aria-hidden="true" /></div></div>}</div></div>}
       </div>
 
       {messages.length === 1 && <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">{prompts.map((prompt) => <button key={prompt} onClick={() => send(prompt)} disabled={busy} className="flex items-center justify-between gap-2 rounded-2xl border border-white/50 bg-white/30 px-3 py-3 text-left text-xs transition-colors hover:border-primary/50 hover:bg-primary/10 dark:border-white/10 dark:bg-white/[0.035]">{prompt}<ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" /></button>)}</div>}
