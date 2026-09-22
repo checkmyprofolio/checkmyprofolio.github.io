@@ -41,10 +41,10 @@ Profolio AI uses the published portfolio evidence for Vidit-specific facts and k
 };
 
 const prompts = [
-  'What is MeeraAI?',
-  'Tell me about Vidit',
-  'What have I built?',
-  'What are my skills?',
+  '🧠 What is MeeraAI?',
+  '👋 Tell me about Vidit',
+  '🚀 What have I built?',
+  '💻 What are my skills?',
 ];
 
 function InlineMarkdown({ text }: { text: string }) {
