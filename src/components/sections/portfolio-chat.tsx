@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Bot, ExternalLink, Github, Loader2, RotateCcw, Send, X } from 'lucide-react';
+import { ArrowUpRight, Bot, ExternalLink, Github, RotateCcw, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   streamPortfolioQuestion,
   checkPortfolioAI,
   MODEL_ID,
+  type PortfolioCitation,
   type PortfolioStreamEvent,
 } from '@/lib/portfolio-remote-assistant';
 
@@ -16,19 +17,28 @@ type Message = {
   content: string;
   mode?: 'model-generated' | 'scope' | 'error';
   notice?: string;
-  sources?: string[];
+  sources?: PortfolioCitation[];
 };
 
 const welcome: Message = {
   role: 'assistant',
-  content: `# What’s up 👋\n\n## Welcome to my portfolio\n- 🤖 Ask me about **my projects and engineering work**.\n- 🧠 Ask about **MeeraAI, local AI, robotics, or software systems**.\n- 🎓 Ask about **my education, skills, and engineering background**.\n- 📫 Ask for my **public contact details**.\n\n---\n\nI’ll talk to you like **Vidit**, not like a support bot — and the remote model will decide how to answer from verified portfolio evidence.`,
+  content: `# Welcome to my portfolio
+
+## Ask about my work
+
+- My projects and engineering work
+- MeeraAI, local AI, robotics, and software systems
+- My education, skills, and engineering background
+- My public contact details
+
+The assistant uses the published portfolio, my public GitHub sources, and live web search when a question benefits from current external information.`,
 };
 
 const prompts = [
-  '🧠 What is MeeraAI?',
-  '👋 Tell me about Vidit',
-  '🚀 What have I built?',
-  '💻 What are my skills?',
+  'What is MeeraAI?',
+  'Tell me about Vidit',
+  'What have I built?',
+  'What are my skills?',
 ];
 
 function InlineMarkdown({ text }: { text: string }) {
@@ -137,51 +147,47 @@ function RichMarkdown({ content }: { content: string }) {
   return <div className="space-y-3 text-sm text-foreground">{blocks}</div>;
 }
 
-function CitationPill({ sources = [] }: { sources?: string[] }) {
-  const citations = [...new Set(
-    sources.filter((source) => source && !source.includes('· remote GPU')),
-  )];
+function CitationPill({ sources = [] }: { sources?: PortfolioCitation[] }) {
+  const citations = [...new Map(
+    sources
+      .filter((source) => source?.url)
+      .map((source) => [source.url, source]),
+  ).values()];
 
   return (
     <details className="relative shrink-0">
       <summary
         className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[10px] font-semibold text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10"
-        aria-label={`View ${citations.length} citation${citations.length === 1 ? '' : 's'}`}
+        aria-label={`View ${citations.length} sources used for this response`}
       >
         <ExternalLink className="h-3 w-3" />
-        <span>{citations.length || 1} citation{citations.length === 1 ? '' : 's'}</span>
+        <span>{citations.length} source{citations.length === 1 ? '' : 's'}</span>
       </summary>
-      <div className="absolute right-0 top-8 z-30 w-72 max-w-[75vw] rounded-2xl border border-white/60 bg-background/95 p-3 shadow-2xl backdrop-blur-xl dark:border-white/10">
+      <div className="absolute right-0 top-8 z-30 w-80 max-w-[82vw] rounded-2xl border border-white/60 bg-background/95 p-3 shadow-2xl backdrop-blur-xl dark:border-white/10">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          Verified sources
+          Sources used
         </p>
         <div className="space-y-1.5">
-          {(citations.length ? citations : ['Verified portfolio record']).map((source, index) => {
-            const href = source.startsWith('http')
-              ? source
-              : source.startsWith('/')
-                ? source
-                : undefined;
-
-            return href ? (
-              <a
-                key={`${source}-${index}`}
-                href={href}
-                target={href.startsWith('http') ? '_blank' : undefined}
-                rel={href.startsWith('http') ? 'noreferrer' : undefined}
-                className="block rounded-xl border border-slate-500/10 bg-slate-500/[0.035] px-2.5 py-2 text-[11px] leading-4 text-foreground transition hover:border-primary/25 hover:bg-primary/5"
-              >
-                {source.replace(/^https?:\/\//, '')}
-              </a>
-            ) : (
-              <span
-                key={`${source}-${index}`}
-                className="block rounded-xl border border-slate-500/10 bg-slate-500/[0.035] px-2.5 py-2 text-[11px] leading-4 text-muted-foreground"
-              >
-                {source}
+          {(citations.length ? citations : [{
+            url: 'https://checkmyprofolio.github.io/',
+            title: 'Vidit Shah — published portfolio',
+            kind: 'portfolio' as const,
+          }]).map((source, index) => (
+            <a
+              key={`${source.url}-${index}`}
+              href={source.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-xl border border-slate-500/10 bg-slate-500/[0.035] px-2.5 py-2 transition hover:border-primary/25 hover:bg-primary/5"
+            >
+              <span className="block text-[11px] font-medium text-foreground">
+                {source.title}
               </span>
-            );
-          })}
+              <span className="mt-0.5 block break-all text-[10px] leading-4 text-muted-foreground">
+                {new URL(source.url).hostname.replace(/^www\./, '')}
+              </span>
+            </a>
+          ))}
         </div>
       </div>
     </details>
@@ -192,7 +198,7 @@ function AssistantHeader({ sources = [] }: { sources?: string[] }) {
   return (
     <div className="mb-3 flex items-center gap-2 border-b border-slate-500/10 pb-2.5 dark:border-white/10">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="text-sm" aria-hidden="true">✨</span>
+        <Bot className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
         <span className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
           Vidit's portfolio AI
         </span>
@@ -231,6 +237,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   const [streamEvents, setStreamEvents] = useState<PortfolioStreamEvent[]>([]);
   const [error, setError] = useState('');
   const [draftAnswer, setDraftAnswer] = useState('');
+  const [streamSources, setStreamSources] = useState<PortfolioCitation[]>([]);
   const end = useRef<HTMLDivElement>(null);
   const sending = useRef(false);
 
@@ -261,13 +268,30 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     setModelLoading(true);
     setStreamEvents([]);
     setDraftAnswer('');
+    setStreamSources([]);
     setError('');
     try {
       const data = await streamPortfolioQuestion(question, (event) => {
         setStreamEvents((events) => [...events.slice(-7), event]);
         if (event.event === 'model-loading') setModelLoading(true);
         if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
-        if (event.event === 'token') { setModelLoading(false); setDraftAnswer((prev) => prev + event.data); }
+        if (event.event === 'token') {
+          setModelLoading(false);
+          setDraftAnswer((prev) => prev + event.data);
+        }
+        if (event.event === 'citation') {
+          try {
+            const citation = JSON.parse(event.data) as PortfolioCitation;
+            if (citation?.url) {
+              setStreamSources((sources) => [
+                ...sources.filter((source) => source.url !== citation.url),
+                citation,
+              ]);
+            }
+          } catch {
+            // Ignore malformed citation metadata without interrupting generation.
+          }
+        }
       }, history.slice(0, -1));
       setMessages([...history, { role: 'assistant', content: data.answer, mode: data.mode, notice: data.notice, sources: data.sources }]);
     } catch (exception) {
@@ -300,17 +324,17 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
             {message.role === 'assistant' && <AssistantHeader sources={message.sources} />}
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh server-side response · tokens streamed from the remote model</p>}
-            {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">📌 Portfolio-only scope</p>}
-            {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">⚠️ Remote model response unavailable</p>}
+            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">Server-side response · tokens streamed live</p>}
+            {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">Portfolio-only scope</p>}
+            {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">Remote model response unavailable</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
 
           </div>
         </div>)}
-        {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]"><ThinkingPanel events={streamEvents} modelLoading={modelLoading} />{draftAnswer && <div className="rounded-2xl rounded-bl-sm border border-white/50 bg-white/45 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.055]"><AssistantHeader sources={['Verified portfolio record']} /><RichMarkdown content={draftAnswer} /></div>}</div></div>}
+        {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]"><ThinkingPanel events={streamEvents} modelLoading={modelLoading} />{draftAnswer && <div className="rounded-2xl rounded-bl-sm border border-white/50 bg-white/45 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.055]"><AssistantHeader sources={streamSources} /><RichMarkdown content={draftAnswer} /></div>}</div></div>}
       </div>
 
-      {messages.length === 1 && <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">{prompts.map((prompt) => <button key={prompt} onClick={() => send(prompt.replace(/^[^ ]+\s/, ''))} disabled={busy} className="flex items-center justify-between gap-2 rounded-2xl border border-white/50 bg-white/30 px-3 py-3 text-left text-xs transition-colors hover:border-primary/50 hover:bg-primary/10 dark:border-white/10 dark:bg-white/[0.035]">{prompt}<ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" /></button>)}</div>}
+      {messages.length === 1 && <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">{prompts.map((prompt) => <button key={prompt} onClick={() => send(prompt)} disabled={busy} className="flex items-center justify-between gap-2 rounded-2xl border border-white/50 bg-white/30 px-3 py-3 text-left text-xs transition-colors hover:border-primary/50 hover:bg-primary/10 dark:border-white/10 dark:bg-white/[0.035]">{prompt}<ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" /></button>)}</div>}
       <div ref={end} />
     </div>
 
@@ -334,11 +358,11 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           aria-hidden="true"
         />
         {busy
-          ? 'Live remote token stream · generating…'
+          ? 'Live server stream · generating…'
           : remoteStatus === 'checking'
-            ? 'Checking remote AI…'
+            ? 'Checking AI gateway…'
             : remoteStatus === 'ready'
-              ? `Server-side ${MODEL_ID} · streaming enabled`
+              ? `Server-side ${MODEL_ID} · web search + streaming`
               : 'Remote AI is offline'}
       </p>
     </div>
