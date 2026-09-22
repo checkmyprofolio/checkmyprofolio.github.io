@@ -194,7 +194,7 @@ function CitationPill({ sources = [] }: { sources?: PortfolioCitation[] }) {
   );
 }
 
-function AssistantHeader({ sources = [] }: { sources?: string[] }) {
+function AssistantHeader({ sources = [] }: { sources?: PortfolioCitation[] }) {
   return (
     <div className="mb-3 flex items-center gap-2 border-b border-slate-500/10 pb-2.5 dark:border-white/10">
       <div className="flex min-w-0 items-center gap-2">
