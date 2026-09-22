@@ -393,7 +393,7 @@ ${clientEvidence}`;
         `\n\nVISITOR QUESTION:\n${question}`;
 
       const needsWebSearch =
-        /\\b(?:latest|today|current|recent|news|what happened|this week|this month|new release|new releases|launched|launch|announcement|announced|updated|update|2026)\\b/i.test(
+        /\b(?:latest|today|current|recent|news|what happened|this week|this month|new release|new releases|launched|launch|announcement|announced|updated|update|2026)\b/i.test(
           question,
         );
 
