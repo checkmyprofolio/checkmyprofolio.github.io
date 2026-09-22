@@ -50,14 +50,14 @@ function sourceHeader(sources: Source[]) {
 
 function stripHtml(value: string) {
   return value
-    .replace(new RegExp('<script[\\s\\S]*?</script>', 'gi'), ' ')
-    .replace(new RegExp('<style[\\s\\S]*?</style>', 'gi'), ' ')
+    .replace(new RegExp('<script[\s\S]*?</script>', 'gi'), ' ')
+    .replace(new RegExp('<style[\s\S]*?</style>', 'gi'), ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -231,7 +231,7 @@ URL: ${item.source.url}
 CONTENT:
 ${item.text}`,
       )
-      .join('\\n\\n---\\n\\n'),
+      .join('\n\n---\n\n'),
     sources: [...unique.values()].map((item) => item.source),
   };
 }
@@ -361,15 +361,15 @@ CLIENT-SIDE PORTFOLIO EVIDENCE:
 ${clientEvidence}`;
 
       const conversation = history.length
-        ? `\\n\\nCONVERSATION HISTORY:\\n${history
+        ? `\n\nCONVERSATION HISTORY:\n${history
             .map((item) => `${item.role.toUpperCase()}: ${item.content}`)
-            .join('\\n')}`
+            .join('\n')}`
         : '';
 
       const input =
         system +
         conversation +
-        `\\n\\nVISITOR QUESTION:\\n${question}`;
+        `\n\nVISITOR QUESTION:\n${question}`;
 
       let result: unknown;
       let activeModel = MODEL;
@@ -402,7 +402,7 @@ ${clientEvidence}`;
               role: 'system',
               content:
                 system +
-                '\\n\\nWeb search is unavailable in fallback mode. Do not make current-web claims.',
+                '\n\nWeb search is unavailable in fallback mode. Do not make current-web claims.',
             },
             ...history,
             { role: 'user', content: question },
