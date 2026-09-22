@@ -322,11 +322,11 @@ export default {
         model: MODEL,
         fallbackModel: FALLBACK_MODEL,
         inference: 'server-side',
-        streaming: true,
+        streaming: false,
         webSearch: false,
         firstPartySources: true,
         generalQuestions: true,
-        protocol: 'chat-completions-sse',
+        protocol: 'chat-completions-json',
         webSearchTool: null,
       });
     }
@@ -393,11 +393,14 @@ FACTS
 
 RESPONSE
 - Answer the exact visitor question immediately.
-- Normally use 1-3 short paragraphs or up to 6 bullets.
-- Do not force headings.
+- Use polished Markdown.
+- Start with one concise H1 heading that matches the topic.
+- Use 1-3 useful H2/H3 sections when they improve readability.
+- Use bullets or numbered lists for technical details.
+- Use 1-3 relevant emojis naturally in headings or emphasis; do not spam them.
+- Keep the answer concise but substantive, usually 120-300 words unless the question requires more.
 - Never output JSON.
 - Never end with a question or invitation.
-- No emojis.
 
 LIVE GITHUB EVIDENCE:
 ${firstParty.context}
@@ -405,51 +408,79 @@ ${firstParty.context}
 PUBLISHED PORTFOLIO EVIDENCE:
 ${clientEvidence}`;
 
-      // Keep the production portfolio assistant on the fast 3B model.
-      // Current-news/web-search tooling is intentionally not coupled to the
-      // model path so a tool failure cannot push requests onto a slower model.
-      let result: unknown;
+      // Production inference stays on the fast 3B model, but the browser
+      // receives one complete response. This avoids choppy token rendering.
       const activeModel = MODEL;
       const webSearch = false;
 
+      let result: unknown;
       try {
         result = await env.AI.run(MODEL, {
           messages: [
             { role: 'system', content: system },
             { role: 'user', content: question },
           ],
-          stream: true,
-          max_tokens: 220,
-          temperature: 0.18,
-          top_p: 0.85,
+          stream: false,
+          max_tokens: 360,
+          temperature: 0.2,
+          top_p: 0.9,
           seed: 17,
         });
       } catch (error) {
         return json(
           {
-            error: error instanceof Error ? error.message : 'Fast 3B inference failed.',
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Fast 3B inference failed.',
             code: 'FAST_MODEL_FAILED',
           },
           502,
         );
       }
 
-      if (!(result instanceof ReadableStream)) {
+      const responseText = (() => {
+        if (typeof result === 'string') return result;
+        if (!result || typeof result !== 'object') return '';
+
+        const value = result as Record<string, unknown>;
+        if (typeof value.response === 'string') return value.response;
+        if (typeof value.answer === 'string') return value.answer;
+
+        const choices = Array.isArray(value.choices) ? value.choices : [];
+        const first = choices[0];
+        if (first && typeof first === 'object') {
+          const choice = first as Record<string, unknown>;
+          if (typeof choice.text === 'string') return choice.text;
+
+          const message = choice.message;
+          if (message && typeof message === 'object') {
+            const content = (message as Record<string, unknown>).content;
+            if (typeof content === 'string') return content;
+          }
+        }
+
+        return '';
+      })().trim();
+
+      if (!responseText) {
         return json(
           {
-            error: 'AI provider did not return a readable stream.',
-            code: 'STREAM_UNAVAILABLE',
+            error: 'Fast 3B inference returned an empty response.',
+            code: 'EMPTY_RESPONSE',
           },
           502,
         );
       }
 
-      return passThroughStream(
-        result,
-        firstParty.sources,
-        activeModel,
+      return json({
+        answer: responseText,
+        mode: 'model-generated',
+        sources: firstParty.sources,
+        model: activeModel,
         webSearch,
-      );
+        streaming: false,
+      });
     } catch (error) {
       return json(
         {
