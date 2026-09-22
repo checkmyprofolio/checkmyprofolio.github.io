@@ -18,6 +18,7 @@ export type PortfolioStreamEvent = {
   event:
     | 'scope'
     | 'retrieval'
+    | 'token'
     | 'citation'
     | 'grounding'
     | 'complete'
@@ -270,6 +271,77 @@ async function fetchWithTimeout(
   }
 }
 
+type StreamPayload = {
+  response?: unknown;
+  answer?: unknown;
+  delta?: unknown;
+  token?: unknown;
+  choices?: Array<{
+    delta?: { content?: unknown };
+    text?: unknown;
+    message?: { content?: unknown };
+  }>;
+  annotations?: unknown;
+  annotation?: unknown;
+};
+
+function streamText(payload: StreamPayload): string {
+  if (typeof payload.response === 'string') return payload.response;
+  if (typeof payload.answer === 'string') return payload.answer;
+  if (typeof payload.delta === 'string') return payload.delta;
+  if (typeof payload.token === 'string') return payload.token;
+  const first = payload.choices?.[0];
+  if (typeof first?.delta?.content === 'string') return first.delta.content;
+  if (typeof first?.text === 'string') return first.text;
+  if (typeof first?.message?.content === 'string') return first.message.content;
+  return '';
+}
+
+function streamCitations(payload: StreamPayload): PortfolioCitation[] {
+  const output: PortfolioCitation[] = [];
+  const walk = (value: unknown) => {
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) {
+      value.forEach(walk);
+      return;
+    }
+    const item = value as Record<string, unknown>;
+    const nested = item.url_citation;
+    const nestedRecord = nested && typeof nested === 'object'
+      ? (nested as Record<string, unknown>)
+      : null;
+    const url =
+      typeof item.url === 'string'
+        ? item.url
+        : typeof nestedRecord?.url === 'string'
+          ? nestedRecord.url
+          : '';
+    if (/^https?:\/\//i.test(url)) {
+      output.push({
+        url,
+        title:
+          typeof item.title === 'string'
+            ? item.title
+            : typeof nestedRecord?.title === 'string'
+              ? nestedRecord.title
+              : url,
+        kind: 'web',
+      });
+    }
+    Object.values(item).forEach(walk);
+  };
+  walk(payload.annotations);
+  walk(payload.annotation);
+  return [...new Map(output.map((item) => [item.url, item])).values()];
+}
+
+function parseSseData(data: string): StreamPayload | null {
+  try {
+    return JSON.parse(data) as StreamPayload;
+  } catch {
+    return null;
+  }
+}
 export async function checkPortfolioAI(): Promise<boolean> {
   try {
     const response = await fetchWithTimeout(
@@ -282,12 +354,14 @@ export async function checkPortfolioAI(): Promise<boolean> {
 
     const data = (await response.json()) as {
       ok?: boolean;
-          firstPartySources?: boolean;
+      firstPartySources?: boolean;
+      responseFormat?: string;
     };
 
     return (
       data.ok === true &&
-      data.firstPartySources === true
+      data.firstPartySources === true &&
+      data.responseFormat === 'stream'
     );
   } catch {
     return false;
@@ -321,21 +395,18 @@ export async function streamPortfolioQuestion(
   if (isRuntimePrivacyQuestion(trimmed)) {
     return runtimePrivacyAnswer();
   }
-  const identity = portfolioFacts.identity;
 
-  // Handle lightweight social turns locally so greetings and acknowledgements
-  // feel immediate instead of waiting for model inference.
-  if (/^(?:hi|hello|hey|heyy|hey there|yo|sup|good morning|good afternoon|good evening)[!.\\s]*$/i.test(trimmed)) {
-    const answer =
-      "Hey! 👋 I’m Profolio AI, the assistant for Vidit’s public portfolio. I can help with his projects, engineering work, skills, education, and technical background.";
+  const identity = portfolioFacts.identity;
+  if (/^(?:hi|hello|hey|heyy|hey there|yo|sup|good morning|good afternoon|good evening)[!.\s]*$/i.test(trimmed)) {
+    const answer = 'Hey! 👋 I’m Profolio AI, the assistant for Vidit’s public portfolio. I can help with his projects, engineering work, skills, education, and technical background.';
     emit({ event: 'complete', data: 'Immediate conversational response.' });
     return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
-  if (/^(?:thanks|thank you|thx|ty|got it|okay|ok|cool|nice|great|perfect)[!.\\s]*$/i.test(trimmed)) {
+  if (/^(?:thanks|thank you|thx|ty|got it|okay|ok|cool|nice|great|perfect)[!.\s]*$/i.test(trimmed)) {
     const answer = /^(?:thanks|thank you|thx|ty)/i.test(trimmed)
-      ? "You’re welcome. Glad that helped."
-      : "Got it.";
+      ? 'You’re welcome. Glad that helped.'
+      : 'Got it.';
     emit({ event: 'complete', data: 'Immediate conversational response.' });
     return { answer, mode: 'model-generated', sources: fallbackSources };
   }
@@ -345,25 +416,14 @@ export async function streamPortfolioQuestion(
     !Object.prototype.hasOwnProperty.call(identity, 'birthDate') &&
     !Object.prototype.hasOwnProperty.call(identity, 'dateOfBirth')
   ) {
-    const answer =
-      "### Personal detail\\nI don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.";
+    const answer = '### Personal detail\nI don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.';
     emit({ event: 'complete', data: 'Unsupported personal detail declined.' });
     return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
-
-  emit({
-    event: 'scope',
-    data: 'Preparing a direct portfolio answer.',
-  });
-  emit({
-    event: 'retrieval',
-    data: 'Using published portfolio evidence for this question.',
-  });
-  emit({
-    event: 'retrieval',
-    data: 'Generating a direct response.',
-  });
+  emit({ event: 'scope', data: 'Preparing a direct portfolio answer.' });
+  emit({ event: 'retrieval', data: 'Using published portfolio evidence for this question.' });
+  emit({ event: 'retrieval', data: 'Generating your answer…' });
 
   try {
     const response = await fetchWithTimeout(
@@ -372,7 +432,7 @@ export async function streamPortfolioQuestion(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json',
+          Accept: 'text/event-stream, application/json',
         },
         body: JSON.stringify({
           question,
@@ -386,74 +446,109 @@ export async function streamPortfolioQuestion(
 
     if (!response.ok) {
       const rawError = await response.text().catch(() => '');
-      let message = `Remote AI server returned HTTP ${response.status}.`;
-
+      let message = 'Remote AI server returned HTTP ' + response.status + '.';
       if (rawError) {
         try {
           const parsed = JSON.parse(rawError) as { error?: string };
-          if (parsed.error) message += ` ${parsed.error}`;
+          if (parsed.error) message += ' ' + parsed.error;
         } catch {
-          message += ` ${rawError.slice(0, 180)}`;
+          message += ' ' + rawError.slice(0, 180);
         }
       }
-
       throw new Error(message);
     }
 
-    const payload = (await response.json()) as {
-      answer?: unknown;
-      mode?: 'model-generated' | 'scope' | 'error';
-      notice?: string;
-      sources?: PortfolioCitation[];
-    };
+    const sourcesFromHeader = (() => {
+      const header = response.headers.get('X-Portfolio-Sources');
+      if (!header) return [] as PortfolioCitation[];
+      try {
+        const parsed = JSON.parse(decodeURIComponent(header)) as unknown[];
+        return Array.isArray(parsed)
+          ? parsed.filter((item): item is PortfolioCitation => Boolean(
+              item &&
+              typeof item === 'object' &&
+              typeof (item as Record<string, unknown>).url === 'string',
+            ))
+          : [];
+      } catch {
+        return [] as PortfolioCitation[];
+      }
+    })();
 
-    const answer =
-      typeof payload.answer === 'string' ? normalize(payload.answer) : '';
-
-    if (!answer) {
-      throw new Error('Remote AI returned an empty response.');
+    if (!response.body || !(response.headers.get('content-type') || '').includes('text/event-stream')) {
+      const payload = (await response.json()) as { answer?: unknown; mode?: 'model-generated' | 'scope' | 'error'; notice?: string; sources?: PortfolioCitation[] };
+      const answer = typeof payload.answer === 'string' ? normalize(payload.answer) : '';
+      if (!answer) throw new Error('Remote AI returned an empty response.');
+      emit({ event: 'complete', data: 'Response complete.' });
+      return {
+        answer,
+        mode: payload.mode || 'model-generated',
+        notice: payload.notice,
+        sources: payload.sources?.length ? payload.sources : (sourcesFromHeader.length ? sourcesFromHeader : fallbackSources),
+      };
     }
 
-    const sources =
-      Array.isArray(payload.sources) && payload.sources.length
-        ? payload.sources.filter((source) => source?.url)
-        : fallbackSources;
+    const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    let buffer = '';
+    let fullAnswer = '';
+    const citations = new Map<string, PortfolioCitation>();
+    for (const source of sourcesFromHeader) citations.set(source.url, source);
 
+    const processFrame = (frame: string) => {
+      const dataLines = frame
+        .replace(/\r/g, '')
+        .split('\n')
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trimStart());
+      if (!dataLines.length) return;
+      const data = dataLines.join('\n').trim();
+      if (!data || data === '[DONE]') return;
+      const payload = parseSseData(data);
+      if (!payload) return;
+      const token = streamText(payload);
+      if (token) {
+        fullAnswer += token;
+        emit({ event: 'token', data: token });
+      }
+      for (const citation of streamCitations(payload)) citations.set(citation.url, citation);
+    };
 
+    while (true) {
+      const result = await reader.read();
+      if (result.value) buffer += decoder.decode(result.value, { stream: true });
+      if (result.done) {
+        buffer += decoder.decode();
+        break;
+      }
 
-    emit({
-      event: 'complete',
-      data: 'Response ready.',
-    });
-    emit({
-      event: 'grounding',
-      data: 'Answer generated from published portfolio evidence.',
-    });
-    emit({
-      event: 'complete',
-      data: 'Response complete.',
-    });
+      buffer = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      let boundary = buffer.indexOf('\n\n');
+      while (boundary !== -1) {
+        processFrame(buffer.slice(0, boundary));
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf('\n\n');
+      }
+    }
+
+    if (buffer.trim()) processFrame(buffer);
+
+    const answer = normalize(fullAnswer);
+    if (!answer) throw new Error('Remote AI returned an empty response.');
+    emit({ event: 'grounding', data: 'Answer generated from published portfolio evidence.' });
+    emit({ event: 'complete', data: 'Response complete.' });
 
     return {
       answer,
-      mode: payload.mode || 'model-generated',
-      notice: payload.notice,
-      sources,
+      mode: 'model-generated',
+      sources: citations.size ? [...citations.values()] : fallbackSources,
     };
   } catch (error) {
-    const detail =
-      error instanceof Error ? error.message : String(error);
-
+    const detail = error instanceof Error ? error.message : String(error);
     emit({ event: 'error', data: detail });
-    emit({
-      event: 'complete',
-      data: 'Remote generation failed.',
-    });
-
+    emit({ event: 'complete', data: 'Remote generation failed.' });
     return {
-      answer: `# Profolio AI is temporarily unavailable
-
-The assistant could not complete this request. Please try again shortly.`,
+      answer: '# Profolio AI is temporarily unavailable\n\nThe assistant could not complete this request. Please try again shortly.',
       mode: 'error',
       notice: 'The assistant could not complete the request.',
       sources: fallbackSources,
