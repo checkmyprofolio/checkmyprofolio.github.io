@@ -18,7 +18,6 @@ export type PortfolioStreamEvent = {
   event:
     | 'scope'
     | 'retrieval'
-    | 'token'
     | 'citation'
     | 'grounding'
     | 'complete'
@@ -32,135 +31,6 @@ export type RemotePortfolioAnswer = {
   notice?: string;
   sources: PortfolioCitation[];
 };
-
-type ServerSseEvent = {
-  type?: string;
-  delta?: string;
-  response?: unknown;
-  answer?: string;
-  result?: { response?: string; answer?: string };
-  choices?: Array<{
-    delta?: { content?: string };
-    text?: string;
-  }>;
-  annotation?: unknown;
-  annotations?: unknown;
-  item?: unknown;
-  output?: unknown;
-  error?: { message?: string; code?: string };
-  message?: string;
-  code?: string;
-};
-
-function evidence(question: string): string {
-  const q = question.toLowerCase();
-  const identity = portfolioFacts.identity;
-  const result: Record<string, unknown> = {
-    identity: {
-      name: identity.name,
-      title: identity.title,
-      statement: identity.statement,
-      degree: identity.degree,
-      university: identity.university,
-      institution: identity.institution,
-      graduation: identity.graduation,
-      cgpa: identity.cgpa,
-    },
-  };
-
-  const wantsProjects = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance)\b/i.test(q);
-  const wantsSkills = /\b(?:skill|skills|stack|technology|technologies|python|react|typescript|javascript|pytorch|tensorflow|opencv|fastapi|electron|llm|rag|lora|qlora|gguf)\b/i.test(q);
-  const wantsEducation = /\b(?:education|degree|college|university|gtu|course|curriculum|cgpa|graduat)\b/i.test(q);
-  const wantsContact = /\b(?:contact|email|linkedin|reach|github)\b/i.test(q);
-  const wantsMeera = /\b(?:meeraai|meera|local ai|model|models|inference|browser|llama|qwen|gguf|rag)\b/i.test(q);
-  const wantsDomains = /\b(?:robotics|automation|vision|control|plc|microcontroller|iot)\b/i.test(q);
-
-  if (wantsEducation) result.education = portfolioFacts.foundation;
-  if (wantsSkills) {
-    result.skills = portfolioFacts.skills;
-    result.skillGroups = portfolioFacts.skillGroups;
-  }
-  if (wantsDomains) result.domains = portfolioFacts.domains;
-  if (wantsContact) result.contact = portfolioFacts.contact;
-
-  if (wantsMeera) {
-    result.meeraAI = {
-      models: portfolioFacts.meeraAI.models,
-      capabilities: portfolioFacts.meeraAI.capabilities,
-      validation: portfolioFacts.meeraAI.validation,
-    };
-  }
-
-  if (wantsProjects) {
-    const matched = portfolioFacts.projects.filter((p) => {
-      const haystack =
-        `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')}`.toLowerCase();
-      return haystack.split(/\W+/).some(
-        (term) => term.length > 3 && q.includes(term),
-      );
-    });
-
-    const sourceProjects = matched.length ? matched : portfolioFacts.projects;
-    result.projects = sourceProjects.slice(0, 6).map(
-      ({ title, description, narrative, tags, buildNotes, githubUrl, page }) => ({
-        title,
-        description,
-        narrative: matched.length ? narrative : undefined,
-        tags,
-        buildNotes: matched.length ? buildNotes : undefined,
-        githubUrl: githubUrl === '#' ? undefined : githubUrl,
-        page,
-      }),
-    );
-  }
-
-  return JSON.stringify(result).slice(0, 6500);
-}
-
-function defaultSources(question: string): PortfolioCitation[] {
-  const q = question.toLowerCase();
-  const sources: PortfolioCitation[] = [
-    {
-      url: 'https://checkmyprofolio.github.io/',
-      title: 'Vidit Shah — published portfolio',
-      kind: 'portfolio',
-    },
-    {
-      url: 'https://github.com/viditshah5656',
-      title: 'Vidit Shah — GitHub profile',
-      kind: 'github',
-    },
-  ];
-
-  for (const p of portfolioFacts.projects) {
-    const text =
-      `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
-
-    if (
-      text
-        .split(/\W+/)
-        .some((term) => term.length > 3 && q.includes(term))
-    ) {
-      if (p.page) {
-        sources.push({
-          url: `https://checkmyprofolio.github.io${p.page}`,
-          title: `${p.title} — portfolio`,
-          kind: 'portfolio',
-        });
-      }
-
-      if (p.githubUrl && p.githubUrl !== '#') {
-        sources.push({
-          url: p.githubUrl,
-          title: `${p.title} — GitHub`,
-          kind: 'github',
-        });
-      }
-    }
-  }
-
-  return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
-}
 
 function emojiFor(text: string, fallback = '✨') {
   const value = text.toLowerCase();
@@ -205,7 +75,7 @@ function enrichWithEmojis(answer: string) {
       continue;
     }
 
-    const heading = line.match(/^(#{1,3})\\s+(.+)$/);
+    const heading = line.match(/^(#{1,3})\s+(.+)$/);
     if (heading) {
       const title = Array.from(heading[2])
         .filter((char) => {
@@ -223,19 +93,20 @@ function enrichWithEmojis(answer: string) {
       continue;
     }
 
-    const bullet = line.match(/^([-*+])\\s+(.+)$/);
+    const bullet = line.match(/^([-*+])\s+(.+)$/);
     if (bullet && emojiCount < 8) {
-      const text = bullet[2];
-      output.push(`${bullet[1]} ${hasEmoji(text) ? text : `${emojiFor(text)} ${text}`}`);
-      emojiCount += hasEmoji(text) ? 0 : 1;
+      const bulletText = bullet[2];
+      const decorated = hasEmoji(bulletText)
+        ? bulletText
+        : `${emojiFor(bulletText)} ${bulletText}`;
+      output.push(`${bullet[1]} ${decorated}`);
+      if (!hasEmoji(bulletText)) emojiCount += 1;
       continue;
     }
 
     output.push(raw);
   }
 
-  // Guarantee that every substantive generated answer has visible emoji
-  // accents even when the 3B model ignores the formatting instruction.
   if (!hasEmoji(output.join('\n'))) {
     const firstContent = output.findIndex((line) => line.trim().length > 0);
     if (firstContent >= 0) {
@@ -250,10 +121,10 @@ function normalize(answer: string) {
   let text = answer.trim();
 
   text = text
-    .replace(/^\\s*#{1,6}\\s*here[’']s the answer\\s*/i, '')
-    .replace(/^\\s*#{1,6}\\s*here is the answer\\s*/i, '')
-    .replace(/^\\s*\\`{3}(?:markdown|md)?\\s*/i, '')
-    .replace(/\s*\`{3}\s*$/i, '')
+    .replace(/^\s*#{1,6}\s*here[’']s the answer\s*/i, '')
+    .replace(/^\s*#{1,6}\s*here is the answer\s*/i, '')
+    .replace(/^\s*`{3}(?:markdown|md)?\s*/i, '')
+    .replace(/\s*`{3}\s*$/i, '')
     .trim();
 
   const lines = text.split(/\n+/);
@@ -261,7 +132,7 @@ function normalize(answer: string) {
     const last = lines[lines.length - 1].trim();
     if (
       /^(?:would you like|do you want|want me to|anything else|let me know|need more|shall i|can i help)/i.test(last) ||
-      /^.*\\b(?:would you like|do you want|want me to|anything else|let me know)\\b.*\\?\\s*$/i.test(last)
+      /^.*\b(?:would you like|do you want|want me to|anything else|let me know)\b.*\?\s*$/i.test(last)
     ) {
       lines.pop();
       continue;
@@ -269,9 +140,10 @@ function normalize(answer: string) {
     break;
   }
 
-  return enrichWithEmojis(lines.join('\\n').replace(/\n{3,}/g, '\n\n').trim());
+  return enrichWithEmojis(
+    lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+  );
 }
-
 async function fetchWithTimeout(
   input: RequestInfo | URL,
   init: RequestInit,
@@ -320,7 +192,7 @@ export async function checkPortfolioAI(): Promise<boolean> {
 
 
 function isRuntimePrivacyQuestion(question: string) {
-  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine)|which\s+(?:model|llm|provider|engine)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|are\s+you\s+(?:llama|gpt|gemma|mistral)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|model\s+name)\b/i.test(
+  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine|stack)|which\s+(?:model|llm|provider|engine)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|what\s+(?:powers|runs|drives)\s+you\s+(?:on|with)|what\s+(?:are|is)\s+your\s+(?:backend|model|provider)|which\s+model\s+powers\s+you|are\s+you\s+(?:llama|gpt|gemma|mistral)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|backend\s+stack|model\s+name|tell\s+me\s+(?:your|the)\s+(?:model|backend|provider|runtime))\b/i.test(
     question,
   );
 }
