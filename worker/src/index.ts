@@ -101,12 +101,27 @@ async function fetchSource(
 async function fetchFirstPartyContext(
   question: string,
 ): Promise<{ context: string; sources: Source[] }> {
+  const q = question.toLowerCase();
+  const portfolioQuestion =
+    /\b(?:vidit|his|he|about me|about vidit|bio|biography|education|degree|cgpa|skills?|experience|career|projects?|built|builds|meeraai|meera|github|repository|repo)\b/i.test(
+      q,
+    );
+  const broadProfileQuestion =
+    /\b(?:vidit|about me|about vidit|bio|biography|education|degree|cgpa|skills?|experience|career)\b/i.test(
+      q,
+    );
+  const projectQuestion =
+    /\b(?:project|projects|built|build|meeraai|meera|github|repository|repo)\b/i.test(
+      q,
+    );
+
+  // Keep non-portfolio/general questions fast: they do not need to wait on
+  // first-party HTTP retrieval unless the visitor is asking about Vidit.
+  if (!portfolioQuestion) {
+    return { context: '', sources: [] };
+  }
+
   const baseSources: Source[] = [
-    {
-      url: 'https://checkmyprofolio.github.io/',
-      title: 'Vidit Shah — published portfolio',
-      kind: 'portfolio',
-    },
     {
       url: 'https://raw.githubusercontent.com/checkmyprofolio/checkmyprofolio.github.io/master/src/lib/engineering-profile.ts',
       title: 'Portfolio engineering profile source',
@@ -117,31 +132,42 @@ async function fetchFirstPartyContext(
       title: 'Portfolio profile and project data source',
       kind: 'github',
     },
-    {
+  ];
+
+  if (broadProfileQuestion) {
+    baseSources.unshift({
+      url: 'https://checkmyprofolio.github.io/',
+      title: 'Vidit Shah — published portfolio',
+      kind: 'portfolio',
+    });
+    baseSources.push({
       url: 'https://api.github.com/users/viditshah5656',
       title: 'Vidit Shah — GitHub profile',
       kind: 'github',
-    },
-    {
-      url: 'https://api.github.com/users/viditshah5656/repos?per_page=30&sort=updated',
+    });
+  }
+
+  if (projectQuestion) {
+    baseSources.push({
+      url: 'https://api.github.com/users/viditshah5656/repos?per_page=20&sort=updated',
       title: 'Vidit Shah — GitHub repositories',
       kind: 'github',
-    },
-  ];
+    });
+  }
 
   const fetched = await Promise.all(
     baseSources.map((source) =>
       fetchSource(
         source,
         source.url.includes('/engineering-profile.ts')
-          ? 6000
+          ? 5500
           : source.url.includes('/data.ts')
             ? 5000
             : source.url.includes('/repos?')
-              ? 7000
+              ? 6000
               : source.url.includes('api.github.com/users/')
-                ? 3000
-                : 4000,
+                ? 2500
+                : 3500,
         source.url.includes('api.github.com')
           ? { headers: { Accept: 'application/vnd.github+json' } }
           : undefined,
@@ -158,12 +184,12 @@ async function fetchFirstPartyContext(
       const repos = JSON.parse(reposEntry.text) as Array<{
         name?: string;
         full_name?: string;
-        html_url?: string;
         default_branch?: string;
       }>;
 
-      const q = question.toLowerCase();
-      const tokens = q.split(/[^a-z0-9]+/).filter((token) => token.length >= 4);
+      const tokens = q
+        .split(/[^a-z0-9]+/)
+        .filter((token) => token.length >= 4);
 
       const ranked = repos
         .filter((repo) => repo.name && repo.full_name && repo.default_branch)
@@ -176,10 +202,10 @@ async function fetchFirstPartyContext(
           return { repo, score };
         })
         .sort((a, b) => b.score - a.score)
-        .slice(0, 2);
+        .slice(0, 1);
 
       const candidates = ranked.length
-        ? ranked.slice(0, 1)
+        ? ranked
         : repos
             .filter((repo) => repo.name && repo.full_name && repo.default_branch)
             .slice(0, 1)
@@ -207,7 +233,7 @@ async function fetchFirstPartyContext(
 
               if (!response.ok) return null;
 
-              const text = truncate((await response.text()).trim(), 4500);
+              const text = truncate((await response.text()).trim(), 4000);
               return text ? { source, text } : null;
             } catch {
               return null;
@@ -216,13 +242,14 @@ async function fetchFirstPartyContext(
         )
       ).filter(Boolean) as { source: Source; text: string }[];
     } catch {
-      // Keep the base GitHub sources when the repo index cannot be parsed.
+      // Keep base sources when the GitHub repository index is unavailable.
     }
   }
 
-  const all = [...usable, ...repoReadmes];
   const unique = new Map<string, { source: Source; text: string }>();
-  for (const item of all) unique.set(item.source.url, item);
+  for (const item of [...usable, ...repoReadmes]) {
+    unique.set(item.source.url, item);
+  }
 
   const context = [...unique.values()]
     .map(
@@ -235,7 +262,7 @@ ${item.text}`,
     .join('\n\n---\n\n');
 
   return {
-    context: truncate(context, 22000),
+    context: truncate(context, 14000),
     sources: [...unique.values()].map((item) => item.source),
   };
 }
@@ -250,10 +277,10 @@ function safeHistory(
         (item.role === 'user' || item.role === 'assistant') &&
         typeof item.content === 'string',
     )
-    .slice(-8)
+    .slice(-4)
     .map((item) => ({
       role: item.role as 'user' | 'assistant',
-      content: String(item.content).slice(0, 3000),
+      content: String(item.content).slice(0, 1600),
     }));
 }
 
