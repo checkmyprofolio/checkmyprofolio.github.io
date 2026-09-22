@@ -174,7 +174,6 @@ export async function streamPortfolioQuestion(
       REQUEST_TIMEOUT_MS,
     );
 
-    const contentType = response.headers.get('content-type') || '';
     const rawBody = await response.text();
 
     let data: {
