@@ -293,12 +293,9 @@ function isRuntimePrivacyQuestion(question: string) {
 }
 
 function scrubRuntimeDisclosure(text: string) {
-  return text
-    .replace(/\b(?:@cf\/meta\/)?llama[- ]?3(?:\.2)?(?:[- ]3b)?(?:-instruct(?:-v2)?)?\b/gi, 'the underlying assistant model')
-    .replace(/\b(?:gpt[- ]?5(?:\.5)?|gpt[- ]?[0-9]+(?:\.[0-9]+)?)\b/gi, 'the underlying assistant model')
-    .replace(/\b(?:gemma|mistral)\b/gi, 'the underlying assistant model')
-    .replace(/\bworkers?\s+ai\b/gi, 'the AI service')
-    .replace(/\bcloudflare\b/gi, 'the service provider');
+  const disclosure = /(?:\b(?:i(?:'m| am)|we(?:'re| are)|this assistant|profolio ai|the assistant|the backend|the underlying model)\b[\s\S]{0,80}\b(?:model|llm|backend|provider|runtime|engine)\b[\s\S]{0,80}\b(?:@cf\/meta\/llama[- ]?3(?:\.2)?(?:[- ]3b)?(?:-instruct(?:-v2)?)?|llama[- ]?3(?:\.2)?(?:[- ]3b)?|gpt[- ]?5(?:\.5)?|gemma|mistral|workers? ai|cloudflare)\b)|\b(?:powered by|running on|built on|uses|use)\s+(?:@cf\/meta\/llama[- ]?3(?:\.2)?(?:[- ]3b)?(?:-instruct(?:-v2)?)?|llama[- ]?3(?:\.2)?(?:[- ]3b)?|gpt[- ]?5(?:\.5)?|gemma|mistral|workers? ai|cloudflare)\b)/i;
+  if (disclosure.test(text)) return RUNTIME_PRIVACY_REPLY;
+  return text;
 }
 
 export default {
