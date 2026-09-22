@@ -1,6 +1,5 @@
 import { portfolioFacts } from './portfolio-knowledge';
 
-export const MODEL_ID = '@cf/meta/llama-3.2-3b-instruct-v2';
 export const CONTEXT_WINDOW = 80000;
 export const PORTFOLIO_AI_ENDPOINT =
   process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT ||
@@ -19,8 +18,6 @@ export type PortfolioStreamEvent = {
   event:
     | 'scope'
     | 'retrieval'
-    | 'model-loading'
-    | 'model-ready'
     | 'token'
     | 'citation'
     | 'grounding'
@@ -34,7 +31,6 @@ export type RemotePortfolioAnswer = {
   mode: 'model-generated' | 'scope' | 'error';
   notice?: string;
   sources: PortfolioCitation[];
-  model?: string;
 };
 
 type ServerSseEvent = {
@@ -298,268 +294,6 @@ async function fetchWithTimeout(
   }
 }
 
-function parseSsePayload(
-  buffer: string,
-): {
-  events: Array<ServerSseEvent | { type: 'text'; text: string }>;
-  remainder: string;
-} {
-  const events: Array<ServerSseEvent | { type: 'text'; text: string }> = [];
-  let cursor = 0;
-
-  while (cursor < buffer.length) {
-    while (/\s/.test(buffer[cursor] || '')) cursor += 1;
-    if (cursor >= buffer.length) break;
-
-    if (buffer.startsWith('event:', cursor) || buffer.startsWith('id:', cursor)) {
-      const newline = buffer.indexOf('\\n', cursor);
-      if (newline === -1) return { events, remainder: buffer.slice(cursor) };
-      cursor = newline + 1;
-      continue;
-    }
-
-    // Accept both standard SSE and flattened streams where frames arrive
-    // back-to-back with a "data:" marker but no newline separators.
-    if (buffer.startsWith('data:', cursor)) {
-      cursor += 5;
-      while (/\s/.test(buffer[cursor] || '')) cursor += 1;
-      if (cursor >= buffer.length) return { events, remainder: buffer.slice(cursor - 5) };
-    }
-
-    if (buffer.startsWith('[DONE]', cursor)) {
-      events.push({ type: 'done' });
-      cursor += '[DONE]'.length;
-      continue;
-    }
-
-    if (buffer[cursor] !== '{') {
-      const nextMarker = buffer.indexOf(' data:', cursor);
-      const nextLine = buffer.indexOf('\\n', cursor);
-      const cut =
-        nextMarker === -1
-          ? nextLine
-          : nextLine === -1
-            ? nextMarker
-            : Math.min(nextMarker, nextLine);
-
-      if (cut === -1) return { events, remainder: buffer.slice(cursor) };
-      const plain = buffer.slice(cursor, cut).trim();
-      if (plain) events.push({ type: 'text', text: plain });
-      cursor = cut;
-      continue;
-    }
-
-    // Extract one complete JSON object without depending on SSE line breaks.
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    let end = -1;
-
-    for (let i = cursor; i < buffer.length; i += 1) {
-      const char = buffer[i];
-
-      if (inString) {
-        if (escaped) {
-          escaped = false;
-        } else if (char === '\\\\') {
-          escaped = true;
-        } else if (char === '"') {
-          inString = false;
-        }
-        continue;
-      }
-
-      if (char === '"') {
-        inString = true;
-        continue;
-      }
-
-      if (char === '{') depth += 1;
-      if (char === '}') {
-        depth -= 1;
-        if (depth === 0) {
-          end = i + 1;
-          break;
-        }
-      }
-    }
-
-    if (end === -1) {
-      return { events, remainder: buffer.slice(cursor) };
-    }
-
-    const jsonText = buffer.slice(cursor, end);
-    try {
-      events.push(JSON.parse(jsonText) as ServerSseEvent);
-    } catch {
-      events.push({ type: 'text', text: jsonText });
-    }
-    cursor = end;
-  }
-
-  return { events, remainder: '' };
-}
-
-function normalizeCitation(value: unknown): PortfolioCitation | null {
-  if (!value || typeof value !== 'object') return null;
-
-  const item = value as Record<string, unknown>;
-  const type = typeof item.type === 'string' ? item.type : '';
-
-  const nested =
-    item.url_citation && typeof item.url_citation === 'object'
-      ? (item.url_citation as Record<string, unknown>)
-      : null;
-
-  const url =
-    type === 'url_citation' && typeof item.url === 'string'
-      ? item.url
-      : typeof nested?.url === 'string'
-        ? nested.url
-        : '';
-
-  if (!/^https?:\/\//i.test(url)) return null;
-
-  const title =
-    type === 'url_citation' && typeof item.title === 'string'
-      ? item.title
-      : typeof nested?.title === 'string'
-        ? nested.title
-        : (() => {
-            try {
-              return new URL(url).hostname.replace(/^www\\./, '');
-            } catch {
-              return url;
-            }
-          })();
-
-  return {
-    url,
-    title,
-    kind: 'web',
-  };
-}
-
-function collectCitations(
-  value: unknown,
-  output: Map<string, PortfolioCitation>,
-  depth = 0,
-) {
-  if (depth > 8 || value == null) return;
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      collectCitations(item, output, depth + 1);
-    }
-    return;
-  }
-
-  if (typeof value !== 'object') return;
-
-  const candidate = normalizeCitation(value);
-  if (candidate) {
-    output.set(candidate.url, candidate);
-  }
-
-  const record = value as Record<string, unknown>;
-  for (const [key, child] of Object.entries(record)) {
-    if (
-      key === 'reasoning' ||
-      key === 'reasoning_text' ||
-      key === 'summary'
-    ) {
-      continue;
-    }
-    collectCitations(child, output, depth + 1);
-  }
-}
-
-function citationsFromHeader(header: string | null): PortfolioCitation[] {
-  if (!header) return [];
-
-  try {
-    const parsed = JSON.parse(decodeURIComponent(header)) as unknown[];
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed
-      .map((item) => {
-        if (!item || typeof item !== 'object') return null;
-
-        const source = item as Record<string, unknown>;
-        if (
-          typeof source.url !== 'string' ||
-          !/^https?:\/\//i.test(source.url)
-        ) {
-          return null;
-        }
-
-        const kind =
-          source.kind === 'portfolio' || source.kind === 'github'
-            ? source.kind
-            : 'web';
-
-        return {
-          url: source.url,
-          title:
-            typeof source.title === 'string'
-              ? source.title
-              : source.url,
-          kind,
-        } satisfies PortfolioCitation;
-      })
-      .filter((item): item is PortfolioCitation => Boolean(item));
-  } catch {
-    return [];
-  }
-}
-
-function isTextEvent(
-  event: ServerSseEvent | { type: 'text'; text: string },
-): event is { type: 'text'; text: string } {
-  return (
-    event.type === 'text' &&
-    'text' in event &&
-    typeof event.text === 'string'
-  );
-}
-
-function extractStreamText(event: ServerSseEvent): string {
-  // Responses API streaming uses a top-level delta on response.output_text.delta.
-  if (typeof event.delta === 'string') {
-    return event.delta;
-  }
-
-  const choice = event.choices?.[0];
-
-  if (typeof choice?.delta?.content === 'string') {
-    return choice.delta.content;
-  }
-
-  if (typeof choice?.text === 'string') {
-    return choice.text;
-  }
-
-  if (typeof event.response === 'string') {
-    return event.response;
-  }
-
-  // Backward-compatible path: an older deployed Worker may still return
-  // one complete JSON response instead of SSE while the new Worker rolls out.
-  if (typeof event.answer === 'string') {
-    return event.answer;
-  }
-
-  if (typeof event.result?.response === 'string') {
-    return event.result.response;
-  }
-
-  if (typeof event.result?.answer === 'string') {
-    return event.result.answer;
-  }
-
-  return '';
-}
-
 export async function checkPortfolioAI(): Promise<boolean> {
   try {
     const response = await fetchWithTimeout(
@@ -572,21 +306,32 @@ export async function checkPortfolioAI(): Promise<boolean> {
 
     const data = (await response.json()) as {
       ok?: boolean;
-      model?: string;
-      streaming?: boolean;
-      webSearch?: boolean;
-      firstPartySources?: boolean;
+          firstPartySources?: boolean;
     };
 
     return (
       data.ok === true &&
-      data.streaming === false &&
-      data.firstPartySources === true &&
-      typeof data.model === 'string'
+      data.firstPartySources === true
     );
   } catch {
     return false;
   }
+}
+
+
+function isRuntimePrivacyQuestion(question: string) {
+  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine)|which\s+(?:model|llm|provider|engine)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|are\s+you\s+(?:llama|gpt|gemma|mistral)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|model\s+name)\b/i.test(
+    question,
+  );
+}
+
+function runtimePrivacyAnswer(): RemotePortfolioAnswer {
+  return {
+    answer:
+      "## Profolio AI privacy 🔒\nI keep my underlying model, provider, and backend implementation details private. I can explain my capabilities and the information available in Vidit's public portfolio, but I do not expose the runtime technology behind this assistant.",
+    mode: 'scope',
+    sources: defaultSources(''),
+  };
 }
 
 export async function streamPortfolioQuestion(
@@ -596,6 +341,10 @@ export async function streamPortfolioQuestion(
 ): Promise<RemotePortfolioAnswer> {
   const fallbackSources = defaultSources(question);
   const trimmed = question.trim();
+
+  if (isRuntimePrivacyQuestion(trimmed)) {
+    return runtimePrivacyAnswer();
+  }
   const identity = portfolioFacts.identity;
 
   // Handle lightweight social turns locally so greetings and acknowledgements
@@ -604,7 +353,7 @@ export async function streamPortfolioQuestion(
     const answer =
       "Hey! 👋 I’m Profolio AI, the assistant for Vidit’s public portfolio. I can help with his projects, engineering work, skills, education, and technical background.";
     emit({ event: 'complete', data: 'Immediate conversational response.' });
-    return { answer, mode: 'model-generated', sources: fallbackSources, model: MODEL_ID };
+    return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
   if (/^(?:thanks|thank you|thx|ty|got it|okay|ok|cool|nice|great|perfect)[!.\\s]*$/i.test(trimmed)) {
@@ -612,7 +361,7 @@ export async function streamPortfolioQuestion(
       ? "You’re welcome. Glad that helped."
       : "Got it.";
     emit({ event: 'complete', data: 'Immediate conversational response.' });
-    return { answer, mode: 'model-generated', sources: fallbackSources, model: MODEL_ID };
+    return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
   if (
@@ -623,7 +372,7 @@ export async function streamPortfolioQuestion(
     const answer =
       "### Personal detail\\nI don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.";
     emit({ event: 'complete', data: 'Unsupported personal detail declined.' });
-    return { answer, mode: 'model-generated', sources: fallbackSources, model: MODEL_ID };
+    return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
 
@@ -680,7 +429,6 @@ export async function streamPortfolioQuestion(
       mode?: 'model-generated' | 'scope' | 'error';
       notice?: string;
       sources?: PortfolioCitation[];
-      model?: string;
     };
 
     const answer =
@@ -695,12 +443,11 @@ export async function streamPortfolioQuestion(
         ? payload.sources.filter((source) => source?.url)
         : fallbackSources;
 
-    const activeModel =
-      typeof payload.model === 'string' ? payload.model : MODEL_ID;
+
 
     emit({
       event: 'model-ready',
-      data: `${activeModel} · complete response received`,
+      data: 'Response ready.',
     });
     emit({
       event: 'grounding',
@@ -708,7 +455,7 @@ export async function streamPortfolioQuestion(
     });
     emit({
       event: 'complete',
-      data: `Response complete · ${activeModel}`,
+      data: 'Response complete.',
     });
 
     return {
@@ -716,7 +463,6 @@ export async function streamPortfolioQuestion(
       mode: payload.mode || 'model-generated',
       notice: payload.notice,
       sources,
-      model: activeModel,
     };
   } catch (error) {
     const detail =
@@ -729,17 +475,12 @@ export async function streamPortfolioQuestion(
     });
 
     return {
-      answer: `# Remote AI is temporarily unavailable
+      answer: `# Profolio AI is temporarily unavailable
 
-The portfolio could not complete its server-side AI request.
-
-**Model:** ${MODEL_ID}
-
-**Inference:** server-side · fast 3B complete-response generation`,
+The assistant could not complete this request. Please try again shortly.`,
       mode: 'error',
-      notice: detail,
+      notice: 'The assistant could not complete the request.',
       sources: fallbackSources,
-      model: MODEL_ID,
     };
   }
 }
