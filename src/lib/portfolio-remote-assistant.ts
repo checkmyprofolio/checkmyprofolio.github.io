@@ -327,6 +327,16 @@ function citationsFromHeader(header: string | null): PortfolioCitation[] {
   }
 }
 
+function isTextEvent(
+  event: ServerSseEvent | { type: 'text'; text: string },
+): event is { type: 'text'; text: string } {
+  return (
+    event.type === 'text' &&
+    'text' in event &&
+    typeof event.text === 'string'
+  );
+}
+
 function extractStreamText(event: ServerSseEvent): string {
   const choice = event.choices?.[0];
 
@@ -485,7 +495,7 @@ export async function streamPortfolioQuestion(
         return;
       }
 
-      if (event.type === 'text') {
+      if (isTextEvent(event)) {
         if (event.text) {
           finalAnswer += event.text;
           emit({ event: 'token', data: event.text });
