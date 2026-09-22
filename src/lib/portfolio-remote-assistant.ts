@@ -414,7 +414,7 @@ export async function streamPortfolioQuestion(
 
 
     emit({
-      event: 'model-ready',
+      event: 'complete',
       data: 'Response ready.',
     });
     emit({
