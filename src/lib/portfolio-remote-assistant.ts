@@ -169,19 +169,6 @@ function defaultSources(question: string): PortfolioCitation[] {
 function normalize(answer: string) {
   let text = answer.trim();
 
-  // Strip common emoji code-point ranges so older/cached generations
-  // cannot pollute the professional UI. Avoid Unicode property escapes here
-  // because some production parsing targets do not support them reliably.
-  text = Array.from(text)
-    .filter((char) => {
-      const code = char.codePointAt(0) || 0;
-      return !(
-        (code >= 0x1f300 && code <= 0x1faff) ||
-        (code >= 0x2600 && code <= 0x27bf)
-      );
-    })
-    .join('');
-
   text = text
     .replace(/^\s*#{1,6}\s*here[’']s the answer\s*/i, '')
     .replace(/^\s*#{1,6}\s*here is the answer\s*/i, '')
@@ -189,12 +176,11 @@ function normalize(answer: string) {
     .replace(/\s*\`{3}\s*$/i, '')
     .trim();
 
-  // Profolio AI should provide self-contained answers rather than trying to
-  // keep the visitor in a conversational loop.
+  // Keep the final response self-contained without stripping legitimate
+  // content such as headings or useful rhetorical punctuation.
   const lines = text.split(/\n+/);
   while (lines.length) {
     const last = lines[lines.length - 1].trim();
-
     if (
       /^(?:would you like|do you want|want me to|anything else|let me know|need more|shall i|can i help)/i.test(last) ||
       /^.*\b(?:would you like|do you want|want me to|anything else|let me know)\b.*\?\s*$/i.test(last)
@@ -202,7 +188,6 @@ function normalize(answer: string) {
       lines.pop();
       continue;
     }
-
     break;
   }
 
@@ -531,15 +516,15 @@ export async function streamPortfolioQuestion(
 
   emit({
     event: 'scope',
-    data: 'Checking the question against first-party portfolio and GitHub sources.',
+    data: 'Preparing a direct portfolio answer.',
   });
   emit({
     event: 'retrieval',
-    data: 'Fetching current portfolio and GitHub context, with live web search available.',
+    data: 'Using published portfolio evidence for this question.',
   });
   emit({
     event: 'model-loading',
-    data: 'Opening a live server-side response stream…',
+    data: 'Generating the response on the server.',
   });
 
   try {
@@ -549,12 +534,12 @@ export async function streamPortfolioQuestion(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           question,
           evidence: evidence(question),
-          history: history.slice(-8),
+          history: history.slice(-2),
           source: 'checkmyprofolio.github.io',
         }),
       },
@@ -577,135 +562,46 @@ export async function streamPortfolioQuestion(
       throw new Error(message);
     }
 
-    if (!response.body) {
-      throw new Error('Remote AI did not provide a streaming response body.');
+    const payload = (await response.json()) as {
+      answer?: unknown;
+      mode?: 'model-generated' | 'scope' | 'error';
+      notice?: string;
+      sources?: PortfolioCitation[];
+      model?: string;
+    };
+
+    const answer =
+      typeof payload.answer === 'string' ? normalize(payload.answer) : '';
+
+    if (!answer) {
+      throw new Error('Remote AI returned an empty response.');
     }
 
-    const headerSources = citationsFromHeader(
-      response.headers.get('X-Portfolio-Sources'),
-    );
-
-    const initialSources = headerSources.length
-      ? headerSources
-      : fallbackSources;
-
-    const sourceMap = new Map<string, PortfolioCitation>();
-    for (const source of initialSources) {
-      sourceMap.set(source.url, source);
-      emit({
-        event: 'citation',
-        data: JSON.stringify(source),
-      });
-    }
+    const sources =
+      Array.isArray(payload.sources) && payload.sources.length
+        ? payload.sources.filter((source) => source?.url)
+        : fallbackSources;
 
     const activeModel =
-      response.headers.get('X-Portfolio-Model') || MODEL_ID;
+      typeof payload.model === 'string' ? payload.model : MODEL_ID;
 
     emit({
       event: 'model-ready',
-      data: `${activeModel} · live response stream connected`,
+      data: `${activeModel} · complete response received`,
     });
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let finalAnswer = '';
-    let streamFinished = false;
-
-    const processEvent = (event: ServerSseEvent | { type: 'text'; text: string }) => {
-      if (event.type === 'done') {
-        streamFinished = true;
-        return;
-      }
-
-      if (isTextEvent(event)) {
-        if (event.text) {
-          finalAnswer += event.text;
-          emit({ event: 'token', data: event.text });
-        }
-        return;
-      }
-
-      if (event.type === 'error' || event.type === 'response.failed') {
-        throw new Error(
-          event.error?.message ||
-            event.message ||
-            'Remote AI streaming failed.',
-        );
-      }
-
-      const citationMap = new Map<string, PortfolioCitation>();
-      collectCitations(event, citationMap);
-
-      for (const citation of citationMap.values()) {
-        sourceMap.set(citation.url, citation);
-        emit({
-          event: 'citation',
-          data: JSON.stringify(citation),
-        });
-      }
-
-      const type = event.type || '';
-
-      if (
-        type === 'response.completed' ||
-        type === 'response.done'
-      ) {
-        streamFinished = true;
-        return;
-      }
-
-      const text = extractStreamText(event);
-      if (text && type !== 'response.output_text.done') {
-        finalAnswer += text;
-        emit({ event: 'token', data: text });
-      }
-    };
-
-    while (!streamFinished) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const parsed = parseSsePayload(buffer);
-      buffer = parsed.remainder;
-
-      for (const event of parsed.events) {
-        processEvent(event);
-        if (streamFinished) break;
-      }
-    }
-
-    buffer += decoder.decode();
-
-    if (!streamFinished && buffer.trim()) {
-      const parsed = parseSsePayload(buffer);
-      for (const event of parsed.events) {
-        processEvent(event);
-        if (streamFinished) break;
-      }
-    }
-
-    const answer = normalize(finalAnswer);
-
-    if (!answer) {
-      throw new Error('Remote AI returned an empty streamed response.');
-    }
-
-    const sources = [...sourceMap.values()].slice(0, 10);
-
     emit({
       event: 'grounding',
-      data: 'Answer generated from current first-party sources and, when needed, live web search.',
+      data: 'Answer generated from published portfolio evidence.',
     });
     emit({
       event: 'complete',
-      data: `Live stream complete · ${activeModel}`,
+      data: `Response complete · ${activeModel}`,
     });
 
     return {
       answer,
-      mode: 'model-generated',
+      mode: payload.mode || 'model-generated',
+      notice: payload.notice,
       sources,
       model: activeModel,
     };
@@ -722,11 +618,11 @@ export async function streamPortfolioQuestion(
     return {
       answer: `# Remote AI is temporarily unavailable
 
-The portfolio could not complete its live server-side AI request.
+The portfolio could not complete its server-side AI request.
 
 **Model:** ${MODEL_ID}
 
-**Inference:** server-side · live web search + first-party portfolio/GitHub retrieval`,
+**Inference:** server-side · fast 3B complete-response generation`,
       mode: 'error',
       notice: detail,
       sources: fallbackSources,
