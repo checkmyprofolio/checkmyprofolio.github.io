@@ -242,7 +242,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   const end = useRef<HTMLDivElement>(null);
   const sending = useRef(false);
   const tokenBuffer = useRef('');
-  const tokenFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tokenFrame = useRef<number | null>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -250,23 +250,20 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
 
   useEffect(() => {
     return () => {
-      if (tokenFlushTimer.current) clearTimeout(tokenFlushTimer.current);
+      if (tokenFrame.current !== null) cancelAnimationFrame(tokenFrame.current);
     };
   }, []);
 
   const queueToken = (token: string) => {
     tokenBuffer.current += token;
-    if (tokenFlushTimer.current) return;
+    if (tokenFrame.current !== null) return;
 
-    tokenFlushTimer.current = setTimeout(() => {
+    tokenFrame.current = requestAnimationFrame(() => {
       const next = tokenBuffer.current;
       tokenBuffer.current = '';
-      tokenFlushTimer.current = null;
-      if (next) {
-        setDraftAnswer((prev) => prev + next);
-      }
-      requestAnimationFrame(() => end.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
-    }, 50);
+      tokenFrame.current = null;
+      if (next) setDraftAnswer((prev) => prev + next);
+    });
   };
 
   useEffect(() => {
@@ -294,17 +291,19 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     setModelLoading(true);
     setStreamEvents([]);
     tokenBuffer.current = '';
-    if (tokenFlushTimer.current) {
-      clearTimeout(tokenFlushTimer.current);
-      tokenFlushTimer.current = null;
+    if (tokenFrame.current !== null) {
+      cancelAnimationFrame(tokenFrame.current);
+      tokenFrame.current = null;
     }
     setDraftAnswer('');
     setStreamSources([]);
     setError('');
     try {
       const data = await streamPortfolioQuestion(question, (event) => {
+        // Token events update the visible answer on animation frames; keeping
+        // them out of the event log avoids a second, lagging copy of the stream.
         if (event.event !== 'token') {
-          setStreamEvents((events) => [...events.slice(-7), event]);
+          setStreamEvents((events) => [...events.slice(-5), event]);
         }
         if (event.event === 'model-loading') setModelLoading(true);
         if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
@@ -332,15 +331,13 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       setMessages(history.slice(0, -1));
       setInput(question);
     } finally {
-      if (tokenFlushTimer.current) {
-        clearTimeout(tokenFlushTimer.current);
-        tokenFlushTimer.current = null;
+      if (tokenFrame.current !== null) {
+        cancelAnimationFrame(tokenFrame.current);
+        tokenFrame.current = null;
       }
       const remainingTokens = tokenBuffer.current;
       tokenBuffer.current = '';
-      if (remainingTokens) {
-        setDraftAnswer((prev) => prev + remainingTokens);
-      }
+      if (remainingTokens) setDraftAnswer((prev) => prev + remainingTokens);
       sending.current = false;
       setBusy(false);
       setModelLoading(false);
