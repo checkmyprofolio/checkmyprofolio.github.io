@@ -1,6 +1,6 @@
 import { portfolioFacts } from './portfolio-knowledge';
 
-export const MODEL_ID = 'openai/gpt-5.5';
+export const MODEL_ID = '@cf/meta/llama-3.2-3b-instruct-v2';
 export const CONTEXT_WINDOW = 80000;
 export const PORTFOLIO_AI_ENDPOINT =
   process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT ||
@@ -503,7 +503,6 @@ export async function checkPortfolioAI(): Promise<boolean> {
     return (
       data.ok === true &&
       data.streaming === true &&
-      data.webSearch === true &&
       data.firstPartySources === true &&
       typeof data.model === 'string'
     );
