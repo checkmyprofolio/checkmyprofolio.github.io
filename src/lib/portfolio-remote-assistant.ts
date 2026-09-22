@@ -294,8 +294,8 @@ export async function streamPortfolioQuestion(
     data: 'Using published portfolio evidence for this question.',
   });
   emit({
-    event: 'model-loading',
-    data: 'Generating the response on the server.',
+    event: 'retrieval',
+    data: 'Generating a direct response.',
   });
 
   try {
