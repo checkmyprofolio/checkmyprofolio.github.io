@@ -295,6 +295,7 @@ export default {
         webSearch: true,
         firstPartySources: true,
         protocol: 'openai-responses-sse',
+        webSearchTool: 'web_search_preview',
       });
     }
 
@@ -359,11 +360,16 @@ ${firstParty.context}
 CLIENT-SIDE PORTFOLIO EVIDENCE:
 ${clientEvidence}`;
 
-      const input = [
-        { role: 'system', content: system },
-        ...history,
-        { role: 'user', content: question },
-      ];
+      const conversation = history.length
+        ? `\\n\\nCONVERSATION HISTORY:\\n${history
+            .map((item) => `${item.role.toUpperCase()}: ${item.content}`)
+            .join('\\n')}`
+        : '';
+
+      const input =
+        system +
+        conversation +
+        `\\n\\nVISITOR QUESTION:\\n${question}`;
 
       let result: unknown;
       let activeModel = MODEL;
@@ -378,6 +384,7 @@ ${clientEvidence}`;
             max_output_tokens: 900,
             temperature: 0.15,
             top_p: 0.9,
+            tools: [{ type: 'web_search_preview' }],
           },
           {
             gateway: {
