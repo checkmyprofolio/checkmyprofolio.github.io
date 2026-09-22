@@ -158,14 +158,35 @@ function defaultSources(question: string): PortfolioCitation[] {
 function normalize(answer: string) {
   let text = answer.trim();
 
+  // The model is instructed not to use emojis, but strip any that slip through
+  // so older/cached generations cannot pollute the professional UI.
+  text = text.replace(/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu, '');
+
   text = text
-    .replace(/^\s*#{1,6}\s*here[’']s the answer\s*👋\s*/i, '')
-    .replace(/^\s*#{1,6}\s*here is the answer\s*👋\s*/i, '')
+    .replace(/^\s*#{1,6}\s*here[’']s the answer\s*/i, '')
+    .replace(/^\s*#{1,6}\s*here is the answer\s*/i, '')
     .replace(/^\s*\`{3}(?:markdown|md)?\s*/i, '')
     .replace(/\s*\`{3}\s*$/i, '')
     .trim();
 
-  return text;
+  // Profolio AI should provide self-contained answers rather than trying to
+  // keep the visitor in a conversational loop.
+  const lines = text.split(/\n+/);
+  while (lines.length) {
+    const last = lines[lines.length - 1].trim();
+
+    if (
+      /^(?:would you like|do you want|want me to|anything else|let me know|need more|shall i|can i help)/i.test(last) ||
+      /^.*\b(?:would you like|do you want|want me to|anything else|let me know)\b.*\?\s*$/i.test(last)
+    ) {
+      lines.pop();
+      continue;
+    }
+
+    break;
+  }
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 async function fetchWithTimeout(
