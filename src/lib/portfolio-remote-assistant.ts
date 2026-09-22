@@ -220,28 +220,106 @@ async function fetchWithTimeout(
   }
 }
 
-function parseSseLine(
-  line: string,
-): ServerSseEvent | { type: 'text'; text: string } | null {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith('event:') || trimmed.startsWith('id:')) {
-    return null;
+function parseSsePayload(
+  buffer: string,
+): {
+  events: Array<ServerSseEvent | { type: 'text'; text: string }>;
+  remainder: string;
+} {
+  const events: Array<ServerSseEvent | { type: 'text'; text: string }> = [];
+  let cursor = 0;
+
+  while (cursor < buffer.length) {
+    while (/\s/.test(buffer[cursor] || '')) cursor += 1;
+    if (cursor >= buffer.length) break;
+
+    if (buffer.startsWith('event:', cursor) || buffer.startsWith('id:', cursor)) {
+      const newline = buffer.indexOf('\\n', cursor);
+      if (newline === -1) return { events, remainder: buffer.slice(cursor) };
+      cursor = newline + 1;
+      continue;
+    }
+
+    // Accept both standard SSE and flattened streams where frames arrive
+    // back-to-back with a "data:" marker but no newline separators.
+    if (buffer.startsWith('data:', cursor)) {
+      cursor += 5;
+      while (/\s/.test(buffer[cursor] || '')) cursor += 1;
+      if (cursor >= buffer.length) return { events, remainder: buffer.slice(cursor - 5) };
+    }
+
+    if (buffer.startsWith('[DONE]', cursor)) {
+      events.push({ type: 'done' });
+      cursor += '[DONE]'.length;
+      continue;
+    }
+
+    if (buffer[cursor] !== '{') {
+      const nextMarker = buffer.indexOf(' data:', cursor);
+      const nextLine = buffer.indexOf('\\n', cursor);
+      const cut =
+        nextMarker === -1
+          ? nextLine
+          : nextLine === -1
+            ? nextMarker
+            : Math.min(nextMarker, nextLine);
+
+      if (cut === -1) return { events, remainder: buffer.slice(cursor) };
+      const plain = buffer.slice(cursor, cut).trim();
+      if (plain) events.push({ type: 'text', text: plain });
+      cursor = cut;
+      continue;
+    }
+
+    // Extract one complete JSON object without depending on SSE line breaks.
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let end = -1;
+
+    for (let i = cursor; i < buffer.length; i += 1) {
+      const char = buffer[i];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === '\\\\') {
+          escaped = true;
+        } else if (char === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (char === '{') depth += 1;
+      if (char === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (end === -1) {
+      return { events, remainder: buffer.slice(cursor) };
+    }
+
+    const jsonText = buffer.slice(cursor, end);
+    try {
+      events.push(JSON.parse(jsonText) as ServerSseEvent);
+    } catch {
+      events.push({ type: 'text', text: jsonText });
+    }
+    cursor = end;
   }
 
-  const data = trimmed.startsWith('data:')
-    ? trimmed.slice(5).trimStart()
-    : trimmed;
-
-  if (!data) return null;
-  if (data === '[DONE]') return { type: 'done' };
-
-  try {
-    return JSON.parse(data) as ServerSseEvent;
-  } catch {
-    // Be tolerant of a plain-text streaming intermediary instead of turning
-    // a usable model token into a fatal parser error.
-    return { type: 'text', text: data };
-  }
+  return { events, remainder: '' };
 }
 
 function normalizeCitation(value: unknown): PortfolioCitation | null {
@@ -574,15 +652,10 @@ export async function streamPortfolioQuestion(
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const normalized = buffer.replace(/\\r\\n/g, '\\n');
-      const lines = normalized.split('\\n');
+      const parsed = parseSsePayload(buffer);
+      buffer = parsed.remainder;
 
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const event = parseSseLine(line);
-        if (!event) continue;
-
+      for (const event of parsed.events) {
         processEvent(event);
         if (streamFinished) break;
       }
@@ -591,8 +664,11 @@ export async function streamPortfolioQuestion(
     buffer += decoder.decode();
 
     if (!streamFinished && buffer.trim()) {
-      const event = parseSseLine(buffer);
-      if (event) processEvent(event);
+      const parsed = parseSsePayload(buffer);
+      for (const event of parsed.events) {
+        processEvent(event);
+        if (streamFinished) break;
+      }
     }
 
     const answer = normalize(finalAnswer);
