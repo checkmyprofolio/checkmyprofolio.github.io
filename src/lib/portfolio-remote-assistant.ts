@@ -452,8 +452,12 @@ export async function streamPortfolioQuestion(
       response.headers.get('X-Portfolio-Sources'),
     );
 
+    const initialSources = headerSources.length
+      ? headerSources
+      : fallbackSources;
+
     const sourceMap = new Map<string, PortfolioCitation>();
-    for (const source of [...fallbackSources, ...headerSources]) {
+    for (const source of initialSources) {
       sourceMap.set(source.url, source);
       emit({
         event: 'citation',
