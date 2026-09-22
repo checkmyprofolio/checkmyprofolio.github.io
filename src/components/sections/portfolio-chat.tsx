@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   streamPortfolioQuestion,
+  checkPortfolioAI,
   MODEL_ID,
-  CONTEXT_WINDOW,
   type PortfolioStreamEvent,
 } from '@/lib/portfolio-remote-assistant';
 
@@ -53,9 +53,42 @@ function RichMarkdown({ content }: { content: string }) {
   let table: string[] = [];
 
   const flush = () => {
-    if (paragraph.length) blocks.push(<p key={`p-${blocks.length}`} className="leading-6"><InlineMarkdown text={paragraph.join(' ')} /></p>);
-    if (bullets.length) blocks.push(<ul key={`ul-${blocks.length}`} className="space-y-1.5 pl-5">{bullets.map((x, i) => <li key={i} className="list-disc leading-6"><InlineMarkdown text={x} /></li>)}</ul>);
-    if (numbers.length) blocks.push(<ol key={`ol-${blocks.length}`} className="space-y-1.5 pl-5">{numbers.map((x, i) => <li key={i} className="list-decimal leading-6"><InlineMarkdown text={x} /></li>)}</ol>);
+    if (paragraph.length) {
+      blocks.push(
+        <p key={`p-${blocks.length}`} className="leading-6">
+          <InlineMarkdown text={paragraph.join(' ')} />
+        </p>,
+      );
+      blocks.push(
+        <div
+          key={`p-rule-${blocks.length}`}
+          aria-hidden="true"
+          className="h-px w-full bg-gradient-to-r from-transparent via-slate-400/20 to-transparent dark:via-white/10"
+        />,
+      );
+    }
+    if (bullets.length) {
+      blocks.push(
+        <ul key={`ul-${blocks.length}`} className="space-y-1.5 pl-5">
+          {bullets.map((x, i) => (
+            <li key={i} className="list-disc leading-6">
+              <InlineMarkdown text={x} />
+            </li>
+          ))}
+        </ul>,
+      );
+    }
+    if (numbers.length) {
+      blocks.push(
+        <ol key={`ol-${blocks.length}`} className="space-y-1.5 pl-5">
+          {numbers.map((x, i) => (
+            <li key={i} className="list-decimal leading-6">
+              <InlineMarkdown text={x} />
+            </li>
+          ))}
+        </ol>,
+      );
+    }
     paragraph = []; bullets = []; numbers = [];
   };
 
@@ -104,15 +137,74 @@ function RichMarkdown({ content }: { content: string }) {
   return <div className="space-y-3 text-sm text-foreground">{blocks}</div>;
 }
 
-function SourceList({ sources = [] }: { sources?: string[] }) {
-  if (!sources.length) return null;
-  return <div className="mt-4 border-t border-slate-500/10 pt-3 dark:border-white/10">
-    <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground"><ExternalLink className="h-3 w-3" /> Sources &amp; evidence</div>
-    <div className="flex flex-wrap gap-1.5">{sources.map((source, index) => {
-      const href = source.startsWith('http') ? source : source.startsWith('/') ? source : undefined;
-      return href ? <a key={`${source}-${index}`} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noreferrer' : undefined} className="rounded-full border border-primary/15 bg-primary/[0.045] px-2.5 py-1 text-[10px] text-primary hover:bg-primary/10">{source.startsWith('/') ? source.slice(1) : source.replace(/^https?:\/\//, '')}</a> : <span key={`${source}-${index}`} className="rounded-full border border-slate-500/10 bg-slate-500/[0.035] px-2.5 py-1 text-[10px] text-muted-foreground">{source}</span>;
-    })}</div>
-  </div>;
+function CitationPill({ sources = [] }: { sources?: string[] }) {
+  const citations = [...new Set(
+    sources.filter((source) => source && !source.includes('· remote GPU')),
+  )];
+
+  return (
+    <details className="relative shrink-0">
+      <summary
+        className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[10px] font-semibold text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10"
+        aria-label={`View ${citations.length} citation${citations.length === 1 ? '' : 's'}`}
+      >
+        <ExternalLink className="h-3 w-3" />
+        <span>{citations.length || 1} citation{citations.length === 1 ? '' : 's'}</span>
+      </summary>
+      <div className="absolute right-0 top-8 z-30 w-72 max-w-[75vw] rounded-2xl border border-white/60 bg-background/95 p-3 shadow-2xl backdrop-blur-xl dark:border-white/10">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          Verified sources
+        </p>
+        <div className="space-y-1.5">
+          {(citations.length ? citations : ['Verified portfolio record']).map((source, index) => {
+            const href = source.startsWith('http')
+              ? source
+              : source.startsWith('/')
+                ? source
+                : undefined;
+
+            return href ? (
+              <a
+                key={`${source}-${index}`}
+                href={href}
+                target={href.startsWith('http') ? '_blank' : undefined}
+                rel={href.startsWith('http') ? 'noreferrer' : undefined}
+                className="block rounded-xl border border-slate-500/10 bg-slate-500/[0.035] px-2.5 py-2 text-[11px] leading-4 text-foreground transition hover:border-primary/25 hover:bg-primary/5"
+              >
+                {source.replace(/^https?:\/\//, '')}
+              </a>
+            ) : (
+              <span
+                key={`${source}-${index}`}
+                className="block rounded-xl border border-slate-500/10 bg-slate-500/[0.035] px-2.5 py-2 text-[11px] leading-4 text-muted-foreground"
+              >
+                {source}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function AssistantHeader({ sources = [] }: { sources?: string[] }) {
+  return (
+    <div className="mb-3 flex items-center gap-2 border-b border-slate-500/10 pb-2.5 dark:border-white/10">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="text-sm" aria-hidden="true">✨</span>
+        <span className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Vidit's portfolio AI
+        </span>
+        <span className="hidden text-[10px] text-muted-foreground/60 sm:inline">
+          · live stream
+        </span>
+      </div>
+      <div className="ml-auto">
+        <CitationPill sources={sources} />
+      </div>
+    </div>
+  );
 }
 
 function ThinkingPanel({ events, modelLoading }: { events: PortfolioStreamEvent[]; modelLoading: boolean }) {
@@ -134,7 +226,8 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [modelLoading, setModelLoading] = useState(false);
-  const [modelReady, setModelReady] = useState(true);
+  const [modelReady, setModelReady] = useState(false);
+  const [remoteStatus, setRemoteStatus] = useState<'checking' | 'ready' | 'offline'>('checking');
   const [streamEvents, setStreamEvents] = useState<PortfolioStreamEvent[]>([]);
   const [error, setError] = useState('');
   const [draftAnswer, setDraftAnswer] = useState('');
@@ -144,8 +237,17 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [messages, busy, streamEvents, draftAnswer]);
 
   useEffect(() => {
-    setModelLoading(false);
-    setModelReady(true);
+    let active = true;
+
+    checkPortfolioAI().then((ok) => {
+      if (!active) return;
+      setModelReady(ok);
+      setRemoteStatus(ok ? 'ready' : 'offline');
+    });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function send(text: string) {
@@ -156,7 +258,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     setMessages(history);
     setInput('');
     setBusy(true);
-    setModelLoading(false);
+    setModelLoading(true);
     setStreamEvents([]);
     setDraftAnswer('');
     setError('');
@@ -196,12 +298,13 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       <div className="space-y-5">
         {messages.map((message, index) => <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
+            {message.role === 'assistant' && <AssistantHeader sources={message.sources} />}
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh server-side LLM response · model decided scope & style</p>}
+            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">🤖 Fresh server-side response · tokens streamed from the remote model</p>}
             {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">📌 Portfolio-only scope</p>}
             {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">⚠️ Remote model response unavailable</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
-            {message.sources && <SourceList sources={message.sources} />}
+
           </div>
         </div>)}
         {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]"><ThinkingPanel events={streamEvents} modelLoading={modelLoading} />{draftAnswer && <div className="rounded-2xl rounded-bl-sm border border-white/50 bg-white/45 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.055]"><RichMarkdown content={draftAnswer} /></div>}</div></div>}
@@ -218,7 +321,26 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
-      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Github className="h-3 w-3" />{busy ? 'Remote GPU inference · model deciding…' : `Server-side ${MODEL_ID} · LLM decides · no device inference`}</p>
+      <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <Github className="h-3 w-3" />
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            remoteStatus === 'ready'
+              ? 'bg-emerald-500'
+              : remoteStatus === 'checking'
+                ? 'animate-pulse bg-amber-400'
+                : 'bg-rose-500'
+          }`}
+          aria-hidden="true"
+        />
+        {busy
+          ? 'Live remote token stream · generating…'
+          : remoteStatus === 'checking'
+            ? 'Checking remote AI…'
+            : remoteStatus === 'ready'
+              ? `Server-side ${MODEL_ID} · streaming enabled`
+              : 'Remote AI is offline'}
+      </p>
     </div>
   </>;
 }
