@@ -241,8 +241,33 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   const [streamSources, setStreamSources] = useState<PortfolioCitation[]>([]);
   const end = useRef<HTMLDivElement>(null);
   const sending = useRef(false);
+  const tokenBuffer = useRef('');
+  const tokenFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [messages, busy, streamEvents, draftAnswer]);
+  useEffect(() => {
+    end.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [messages, busy]);
+
+  useEffect(() => {
+    return () => {
+      if (tokenFlushTimer.current) clearTimeout(tokenFlushTimer.current);
+    };
+  }, []);
+
+  const queueToken = (token: string) => {
+    tokenBuffer.current += token;
+    if (tokenFlushTimer.current) return;
+
+    tokenFlushTimer.current = setTimeout(() => {
+      const next = tokenBuffer.current;
+      tokenBuffer.current = '';
+      tokenFlushTimer.current = null;
+      if (next) {
+        setDraftAnswer((prev) => prev + next);
+      }
+      requestAnimationFrame(() => end.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    }, 50);
+  };
 
   useEffect(() => {
     let active = true;
@@ -268,17 +293,24 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     setBusy(true);
     setModelLoading(true);
     setStreamEvents([]);
+    tokenBuffer.current = '';
+    if (tokenFlushTimer.current) {
+      clearTimeout(tokenFlushTimer.current);
+      tokenFlushTimer.current = null;
+    }
     setDraftAnswer('');
     setStreamSources([]);
     setError('');
     try {
       const data = await streamPortfolioQuestion(question, (event) => {
-        setStreamEvents((events) => [...events.slice(-7), event]);
+        if (event.event !== 'token') {
+          setStreamEvents((events) => [...events.slice(-7), event]);
+        }
         if (event.event === 'model-loading') setModelLoading(true);
         if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
         if (event.event === 'token') {
           setModelLoading(false);
-          setDraftAnswer((prev) => prev + event.data);
+          queueToken(event.data);
         }
         if (event.event === 'citation') {
           try {
@@ -300,6 +332,15 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       setMessages(history.slice(0, -1));
       setInput(question);
     } finally {
+      if (tokenFlushTimer.current) {
+        clearTimeout(tokenFlushTimer.current);
+        tokenFlushTimer.current = null;
+      }
+      const remainingTokens = tokenBuffer.current;
+      tokenBuffer.current = '';
+      if (remainingTokens) {
+        setDraftAnswer((prev) => prev + remainingTokens);
+      }
       sending.current = false;
       setBusy(false);
       setModelLoading(false);
