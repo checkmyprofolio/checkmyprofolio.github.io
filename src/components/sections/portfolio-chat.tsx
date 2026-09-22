@@ -273,16 +273,11 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     setBusy(true);
     setModelLoading(true);
     setStreamEvents([]);
-    setDraftAnswer('');
     setStreamSources([]);
     setError('');
     try {
       const data = await streamPortfolioQuestion(question, (event) => {
-        // Token events update the visible answer on animation frames; keeping
-        // them out of the event log avoids a second, lagging copy of the stream.
-        if (event.event !== 'token') {
-          setStreamEvents((events) => [...events.slice(-5), event]);
-        }
+        setStreamEvents((events) => [...events.slice(-5), event]);
         if (event.event === 'complete') {
           setModelLoading(false);
           setModelReady(true);
