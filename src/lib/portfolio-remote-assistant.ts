@@ -33,7 +33,8 @@ export type RemotePortfolioAnswer = {
 type ServerSseEvent = {
   type?: string;
   response?: string;
-  result?: { response?: string };
+  answer?: string;
+  result?: { response?: string; answer?: string };
   choices?: Array<{
     delta?: { content?: string };
     text?: string;
@@ -190,8 +191,18 @@ function extractStreamText(event: ServerSseEvent): string {
     return event.response;
   }
 
+  // Backward-compatible path: an older deployed Worker may still return
+  // one complete JSON response instead of SSE while the new Worker rolls out.
+  if (typeof event.answer === 'string') {
+    return event.answer;
+  }
+
   if (typeof event.result?.response === 'string') {
     return event.result.response;
+  }
+
+  if (typeof event.result?.answer === 'string') {
+    return event.result.answer;
   }
 
   return '';
