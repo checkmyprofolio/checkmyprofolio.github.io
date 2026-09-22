@@ -99,7 +99,7 @@ function evidence(question: string): string {
     const matched = portfolioFacts.projects.filter((p) => {
       const haystack =
         `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')}`.toLowerCase();
-      return haystack.split(/\\W+/).some(
+      return haystack.split(/\W+/).some(
         (term) => term.length > 3 && q.includes(term),
       );
     });
@@ -257,10 +257,10 @@ function normalize(answer: string) {
     .replace(/^\\s*#{1,6}\\s*here[’']s the answer\\s*/i, '')
     .replace(/^\\s*#{1,6}\\s*here is the answer\\s*/i, '')
     .replace(/^\\s*\\`{3}(?:markdown|md)?\\s*/i, '')
-    .replace(/\\s*\\`{3}\\s*$/i, '')
+    .replace(/\s*\`{3}\s*$/i, '')
     .trim();
 
-  const lines = text.split(/\\n+/);
+  const lines = text.split(/\n+/);
   while (lines.length) {
     const last = lines[lines.length - 1].trim();
     if (
@@ -273,7 +273,7 @@ function normalize(answer: string) {
     break;
   }
 
-  return enrichWithEmojis(lines.join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim());
+  return enrichWithEmojis(lines.join('\\n').replace(/\n{3,}/g, '\n\n').trim());
 }
 
 async function fetchWithTimeout(
@@ -580,7 +580,7 @@ export async function checkPortfolioAI(): Promise<boolean> {
 
     return (
       data.ok === true &&
-      data.streaming === true &&
+      data.streaming === false &&
       data.firstPartySources === true &&
       typeof data.model === 'string'
     );
@@ -616,13 +616,12 @@ export async function streamPortfolioQuestion(
   }
 
   if (
-    /\\b(?:birth date|birthdate|birthday|date of birth|dob)\\b/i.test(trimmed) &&
+    /\b(?:birth date|birthdate|birthday|date of birth|dob)\b/i.test(trimmed) &&
     !Object.prototype.hasOwnProperty.call(identity, 'birthDate') &&
     !Object.prototype.hasOwnProperty.call(identity, 'dateOfBirth')
   ) {
     const answer =
-      "### Personal detail
-I don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.";
+      "### Personal detail\\nI don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.";
     emit({ event: 'complete', data: 'Unsupported personal detail declined.' });
     return { answer, mode: 'model-generated', sources: fallbackSources, model: MODEL_ID };
   }
