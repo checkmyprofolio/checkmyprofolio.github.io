@@ -360,6 +360,8 @@ ${clientEvidence}`;
       ];
 
       let result: unknown;
+      let activeModel = MODEL;
+      let webSearch = true;
 
       try {
         result = await env.AI.run(
@@ -378,7 +380,9 @@ ${clientEvidence}`;
             },
           },
         );
-      } catch (primaryError) {
+      } catch {
+        activeModel = FALLBACK_MODEL;
+        webSearch = false;
         result = await env.AI.run(FALLBACK_MODEL, {
           messages: [
             {
@@ -408,13 +412,10 @@ ${clientEvidence}`;
         );
       }
 
-      const model = result === undefined ? FALLBACK_MODEL : MODEL;
-      const webSearch = model === MODEL;
-
       return passThroughStream(
         result,
         firstParty.sources,
-        model,
+        activeModel,
         webSearch,
       );
     } catch (error) {
