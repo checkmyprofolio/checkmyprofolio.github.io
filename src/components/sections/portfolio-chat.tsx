@@ -213,7 +213,7 @@ function ThinkingPanel({ events, modelLoading }: { events: PortfolioStreamEvent[
     <div className="flex items-center gap-2 border-b border-primary/10 px-3 py-2.5">
       <div className="relative h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-60" /><span className="relative block h-2 w-2 rounded-full bg-primary" /></div>
       <span className="text-xs font-semibold text-primary">Thinking</span>
-      <span className="text-[10px] text-muted-foreground">{modelLoading ? 'Letting the remote model decide…' : 'Checking my portfolio evidence…'}</span>
+      <span className="text-[10px] text-muted-foreground">{modelLoading ? 'Connecting to the remote model…' : 'Streaming the response live…'}</span>
     </div>
     <div className="px-3 py-2.5 font-mono text-[10px] leading-4 text-muted-foreground">{visible.map((event, index) => <div key={`${event.event}-${index}`} className="flex items-start gap-2"><span className="shrink-0 text-primary">{event.event}</span><span className="truncate">{event.data}</span></div>)}</div>
     <div className="portfolio-thinking-shimmer h-[2px] w-full" />
@@ -307,7 +307,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
 
           </div>
         </div>)}
-        {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]"><ThinkingPanel events={streamEvents} modelLoading={modelLoading} />{draftAnswer && <div className="rounded-2xl rounded-bl-sm border border-white/50 bg-white/45 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.055]"><RichMarkdown content={draftAnswer} /></div>}</div></div>}
+        {busy && <div className="flex justify-start"><div className="w-full max-w-[92%]"><ThinkingPanel events={streamEvents} modelLoading={modelLoading} />{draftAnswer && <div className="rounded-2xl rounded-bl-sm border border-white/50 bg-white/45 px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[0.055]"><AssistantHeader sources={['Verified portfolio record']} /><RichMarkdown content={draftAnswer} /></div>}</div></div>}
       </div>
 
       {messages.length === 1 && <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">{prompts.map((prompt) => <button key={prompt} onClick={() => send(prompt.replace(/^[^ ]+\s/, ''))} disabled={busy} className="flex items-center justify-between gap-2 rounded-2xl border border-white/50 bg-white/30 px-3 py-3 text-left text-xs transition-colors hover:border-primary/50 hover:bg-primary/10 dark:border-white/10 dark:bg-white/[0.035]">{prompt}<ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" /></button>)}</div>}
