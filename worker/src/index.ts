@@ -50,19 +50,19 @@ function sourceHeader(sources: Source[]) {
 
 function stripHtml(value: string) {
   return value
-    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')
-    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')
+    .replace(new RegExp('<script[\\s\\S]*?</script>', 'gi'), ' ')
+    .replace(new RegExp('<style[\\s\\S]*?</style>', 'gi'), ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
-    .replace(/\s+/g, ' ')
+    .replace(/\\s+/g, ' ')
     .trim();
 }
 
 function truncate(value: string, max: number) {
-  return value.length > max ? value.slice(0, max) + '\\n[truncated]' : value;
+  return value.length > max ? value.slice(0, max) + '\n[truncated]' : value;
 }
 
 async function fetchSource(
