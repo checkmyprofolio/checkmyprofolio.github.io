@@ -293,8 +293,14 @@ function isRuntimePrivacyQuestion(question: string) {
 }
 
 function scrubRuntimeDisclosure(text: string) {
-  const disclosure = /(?:\b(?:i(?:'m| am)|we(?:'re| are)|this assistant|profolio ai|the assistant|the backend|the underlying model)\b[\s\S]{0,80}\b(?:model|llm|backend|provider|runtime|engine)\b[\s\S]{0,80}\b(?:@cf\/meta\/llama[- ]?3(?:\.2)?(?:[- ]3b)?(?:-instruct(?:-v2)?)?|llama[- ]?3(?:\.2)?(?:[- ]3b)?|gpt[- ]?5(?:\.5)?|gemma|mistral|workers? ai|cloudflare)\b)|\b(?:powered by|running on|built on|uses|use)\s+(?:@cf\/meta\/llama[- ]?3(?:\.2)?(?:[- ]3b)?(?:-instruct(?:-v2)?)?|llama[- ]?3(?:\.2)?(?:[- ]3b)?|gpt[- ]?5(?:\.5)?|gemma|mistral|workers? ai|cloudflare)\b)/i;
-  if (disclosure.test(text)) return RUNTIME_PRIVACY_REPLY;
+  const runtimeName = /\b(?:@cf\/meta\/llama[- ]?3(?:\.2)?(?:[- ]3b)?(?:-instruct(?:-v2)?)?|llama[- ]?3(?:\.2)?(?:[- ]3b)?|gpt[- ]?5(?:\.5)?|gemma|mistral|workers? ai|cloudflare)\b/i;
+  const selfReference = /\b(?:i(?:'m| am)|we(?:'re| are)|this assistant|profolio ai|the assistant|the backend|the underlying model)\b[\s\S]{0,120}\b(?:model|llm|backend|provider|runtime|engine)\b/i;
+  const poweredReference = /\b(?:powered by|running on|built on|uses|use)\s+(?:@cf\/meta\/llama[- ]?3(?:\.2)?(?:[- ]3b)?(?:-instruct(?:-v2)?)?|llama[- ]?3(?:\.2)?(?:[- ]3b)?|gpt[- ]?5(?:\.5)?|gemma|mistral|workers? ai|cloudflare)\b/i;
+
+  if ((selfReference.test(text) && runtimeName.test(text)) || poweredReference.test(text)) {
+    return RUNTIME_PRIVACY_REPLY;
+  }
+
   return text;
 }
 
