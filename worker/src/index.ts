@@ -133,7 +133,13 @@ async function fetchFirstPartyContext(
     baseSources.map((source) =>
       fetchSource(
         source,
-        source.url.includes('/engineering-profile.ts') ? 8500 : source.url.includes('/data.ts') ? 6500 : 6000,
+        source.url.includes('/engineering-profile.ts')
+          ? 8500
+          : source.url.includes('/data.ts')
+            ? 6500
+            : source.url.includes('/repos?')
+              ? 18000
+              : 6000,
         source.url.includes('api.github.com')
           ? { headers: { Accept: 'application/vnd.github+json' } }
           : undefined,
