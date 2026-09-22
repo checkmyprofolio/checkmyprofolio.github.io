@@ -215,16 +215,17 @@ function enrichWithEmojis(answer: string) {
 }
 
 function normalize(answer: string) {
-  let text = answer
-    .replace(/\\r\\n/g, '\n')
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '')
-    .replace(/\\t/g, '\t')
-    .trim();
+  let text = answer.trim();
 
-  // Some small models return Markdown wrapped in a quoted JSON-like string.
-  // Decode only escaped formatting sequences; do not evaluate arbitrary data.
+  // Small local models sometimes serialize Markdown line breaks as literal
+  // backslash+n sequences (and occasionally double-escaped variants). Decode
+  // those safely before the renderer sees the answer.
   text = text
+    .replace(/\\+n/g, '\n')
+    .replace(/\\+r/g, '')
+    .replace(/\\+t/g, '\t')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '')
     .replace(/^\s*[=]{4,}\s*$/gm, '')
     .replace(/^\s*#{1,6}\s*here[’']s the answer\s*/i, '')
     .replace(/^\s*#{1,6}\s*here is the answer\s*/i, '')
@@ -232,23 +233,46 @@ function normalize(answer: string) {
     .replace(/\s*`{3}\s*$/i, '')
     .trim();
 
-  const lines = text.split(/\n+/);
-  while (lines.length) {
-    const last = lines[lines.length - 1].trim();
+  const knownHeading = /^(?:your\s+skills|vidit['’]s\s+projects|meeraai\s+overview|about\s+me|about\s+profolio\s+ai|technical\s+details|key\s+features|education|experience|skills|projects|professional\s+background)\b\s*:?[\s\S]*$/i;
+  const lines = text
+    .split('\n')
+    .map((line) => line.trimEnd());
+
+  // Promote common one-line model titles to Markdown headings when the model
+  // omitted the # markers.
+  for (let i = 0; i < lines.length; i += 1) {
+    const value = lines[i].trim();
+    if (!value || /^#{1,6}\s/.test(value)) continue;
+
+    if (/^(?:your\s+skills|vidit['’]s\s+projects|meeraai\s+overview|about\s+me|about\s+profolio\s+ai)\b/i.test(value)) {
+      lines[i] = `## ${value}`;
+    } else if (/^(?:technical\s+details|key\s+features|education|experience|skills|projects|professional\s+background)\s*:?[\s]*$/i.test(value)) {
+      lines[i] = `### ${value.replace(/:$/, '')}`;
+    }
+  }
+
+  // Split adjacent bullet markers if the model omitted a newline between them.
+  text = lines
+    .join('\n')
+    .replace(/\s+([-*+])\s+(?=[A-Za-z0-9🔧🤖🧠🚀💻🎓])/g, '\n$1 ');
+
+  const cleanLines = text.split('\n');
+  while (cleanLines.length) {
+    const last = cleanLines[cleanLines.length - 1].trim();
     if (
       /^(?:would you like|do you want|want me to|anything else|let me know|need more|shall i|can i help)/i.test(last) ||
       /^.*\b(?:would you like|do you want|want me to|anything else|let me know)\b.*\?\s*$/i.test(last)
     ) {
-      lines.pop();
+      cleanLines.pop();
       continue;
     }
     break;
   }
 
-  return enrichWithEmojis(
-    lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
-  );
+  const normalized = cleanLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return enrichWithEmojis(normalized);
 }
+
 async function fetchWithTimeout(
   input: RequestInfo | URL,
   init: RequestInit,
