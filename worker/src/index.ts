@@ -57,7 +57,7 @@ function stripHtml(value: string) {
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')
     .replace(/&gt;/gi, '>')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
@@ -85,7 +85,7 @@ async function fetchSource(
     const raw = await response.text();
     const text = source.kind === 'portfolio' && /<html|<body/i.test(raw)
       ? stripHtml(raw)
-      : raw.replace(/\\s+/g, ' ').trim();
+      : raw.replace(/\s+/g, ' ').trim();
 
     if (!text) return null;
 
