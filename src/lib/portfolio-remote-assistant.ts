@@ -192,7 +192,7 @@ export async function checkPortfolioAI(): Promise<boolean> {
 
 
 function isRuntimePrivacyQuestion(question: string) {
-  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine|stack)|which\s+(?:model|llm|provider|engine)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|what\s+(?:powers|runs|drives)\s+you\s+(?:on|with)|what\s+(?:are|is)\s+your\s+(?:backend|model|provider)|which\s+model\s+powers\s+you|are\s+you\s+(?:llama|gpt|gemma|mistral)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|backend\s+stack|model\s+name|tell\s+me\s+(?:your|the)\s+(?:model|backend|provider|runtime))\b/i.test(
+  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine|stack)|which\s+(?:model|llm|provider|engine)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|what\s+(?:powers|runs|drives)\s+you\s+(?:on|with)|what\s+(?:are|is)\s+your\s+(?:backend|model|provider)|what\s+(?:powers|runs|drives)\s+(?:this|the)\s+(?:chat|assistant|portfolio\s+ai)|which\s+model\s+powers\s+you|are\s+you\s+(?:llama|gpt|gemma|mistral)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|backend\s+stack|model\s+name|tell\s+me\s+(?:your|the)\s+(?:model|backend|provider|runtime))\b/i.test(
     question,
   );
 }
