@@ -265,7 +265,9 @@ export async function streamPortfolioQuestion(
     const decoder = new TextDecoder();
     let buffer = '';
     let finalAnswer = '';
-    let decision: 'answer' | 'refuse' = 'answer';
+    // This value is assigned inside the streamed-event callback, so keep it
+    // widened here; TypeScript cannot reliably track callback mutations.
+    let decision: string = 'answer';
     let style = 'direct';
     let serverModel = MODEL_ID;
     let evidenceConstrained = false;
