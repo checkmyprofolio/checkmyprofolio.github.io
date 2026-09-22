@@ -32,6 +32,65 @@ export type RemotePortfolioAnswer = {
   sources: PortfolioCitation[];
 };
 
+function evidence(question: string): string {
+  const q = question.toLowerCase();
+  const identity = portfolioFacts.identity;
+  const result: Record<string, unknown> = {
+    identity: {
+      name: identity.name,
+      title: identity.title,
+      statement: identity.statement,
+      degree: identity.degree,
+      university: identity.university,
+      institution: identity.institution,
+      graduation: identity.graduation,
+      cgpa: identity.cgpa,
+    },
+  };
+
+  const wantsProjects = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance)\b/i.test(q);
+  const wantsSkills = /\b(?:skill|skills|stack|technology|technologies|python|react|typescript|javascript|pytorch|tensorflow|opencv|fastapi|electron|llm|rag|lora|qlora|gguf)\b/i.test(q);
+  const wantsEducation = /\b(?:education|degree|college|university|gtu|course|curriculum|cgpa|graduat)\b/i.test(q);
+  const wantsContact = /\b(?:contact|email|linkedin|reach|github)\b/i.test(q);
+  const wantsMeera = /\b(?:meeraai|meera|local ai|model|models|inference|browser|llama|qwen|gguf|rag)\b/i.test(q);
+  const wantsDomains = /\b(?:robotics|automation|vision|control|plc|microcontroller|iot)\b/i.test(q);
+
+  if (wantsEducation) result.education = portfolioFacts.foundation;
+  if (wantsSkills) {
+    result.skills = portfolioFacts.skills;
+    result.skillGroups = portfolioFacts.skillGroups;
+  }
+  if (wantsDomains) result.domains = portfolioFacts.domains;
+  if (wantsContact) result.contact = portfolioFacts.contact;
+
+  if (wantsMeera) {
+    result.meeraAI = {
+      models: portfolioFacts.meeraAI.models,
+      capabilities: portfolioFacts.meeraAI.capabilities,
+      validation: portfolioFacts.meeraAI.validation,
+    };
+  }
+
+  if (wantsProjects) {
+    const matched = portfolioFacts.projects.filter((p) => {
+      const haystack = `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')}`.toLowerCase();
+      return haystack.split(/\W+/).some((term) => term.length > 3 && q.includes(term));
+    });
+
+    const sourceProjects = matched.length ? matched : portfolioFacts.projects;
+    result.projects = sourceProjects.slice(0, 6).map(({ title, description, narrative, tags, buildNotes, githubUrl, page }) => ({
+      title,
+      description,
+      narrative: matched.length ? narrative : undefined,
+      tags,
+      buildNotes: matched.length ? buildNotes : undefined,
+      githubUrl: githubUrl === '#' ? undefined : githubUrl,
+      page,
+    }));
+  }
+
+  return JSON.stringify(result).slice(0, 6500);
+}
 function defaultSources(question: string): PortfolioCitation[] {
   const q = question.toLowerCase();
   const sources: PortfolioCitation[] = [
