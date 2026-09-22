@@ -158,9 +158,18 @@ function defaultSources(question: string): PortfolioCitation[] {
 function normalize(answer: string) {
   let text = answer.trim();
 
-  // The model is instructed not to use emojis, but strip any that slip through
-  // so older/cached generations cannot pollute the professional UI.
-  text = text.replace(/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu, '');
+  // Strip common emoji code-point ranges so older/cached generations
+  // cannot pollute the professional UI. Avoid Unicode property escapes here
+  // because some production parsing targets do not support them reliably.
+  text = Array.from(text)
+    .filter((char) => {
+      const code = char.codePointAt(0) || 0;
+      return !(
+        (code >= 0x1f300 && code <= 0x1faff) ||
+        (code >= 0x2600 && code <= 0x27bf)
+      );
+    })
+    .join('');
 
   text = text
     .replace(/^\s*#{1,6}\s*here[’']s the answer\s*/i, '')
