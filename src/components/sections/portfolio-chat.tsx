@@ -22,22 +22,22 @@ type Message = {
 
 const welcome: Message = {
   role: 'assistant',
-  content: `# Profolio AI
+  content: `# Profolio AI 🤖
 
-## Discover Vidit's work
-A concise, source-grounded view of **Vidit Shah's** engineering work, projects, and technical background.
+## Discover Vidit's work 🚀
+A concise, source-grounded view of **Vidit Shah's** engineering work, projects, and technical background. 🧠
 
-### What you can ask
-- Projects and engineering systems
-- MeeraAI, local AI, robotics, and software
-- Education, skills, and engineering background
-- Public portfolio and GitHub information
-- Technical concepts and engineering questions
+### What you can ask 💬
+- 🤖 Projects and engineering systems
+- 🧠 MeeraAI, local AI, robotics, and software
+- 🎓 Education, skills, and engineering background
+- 💻 Public portfolio and GitHub information
+- 🔧 Technical concepts and engineering questions
 
 ---
 
-## Built for quick answers
-Profolio AI uses the published portfolio evidence for Vidit-specific facts and keeps responses focused, readable, and professional.`,
+## Built for quick answers ⚡
+Profolio AI uses the published portfolio evidence for Vidit-specific facts and keeps responses focused, readable, and professional. ✨`,
 };
 
 const prompts = [
@@ -206,10 +206,10 @@ function AssistantHeader({ sources = [] }: { sources?: PortfolioCitation[] }) {
       <div className="flex min-w-0 items-center gap-2">
         <Bot className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
         <span className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-          Profolio AI
+          Profolio AI 🤖
         </span>
         <span className="hidden text-[10px] text-muted-foreground/60 sm:inline">
-          · server response
+          · server response ⚡
         </span>
       </div>
       <div className="ml-auto">
@@ -401,9 +401,9 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           aria-hidden="true"
         />
         {busy
-          ? 'Server-side 3B generation · preparing response…'
+          ? 'Server-side 3B generation · preparing response… 🤖'
           : remoteStatus === 'checking'
-            ? 'Checking AI gateway…'
+            ? 'Checking AI gateway… 🔎'
             : remoteStatus === 'ready'
               ? `Server-side ${MODEL_ID} · fast complete response`
               : 'Remote AI is offline'}
