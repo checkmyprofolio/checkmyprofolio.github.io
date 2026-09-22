@@ -360,7 +360,23 @@ export default {
         return json({ error: 'Invalid question' }, 400);
       }
 
-      const firstParty = await fetchFirstPartyContext(question);
+      const liveGithubQuestion =
+        /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests)\b/i.test(
+          question,
+        );
+
+      const firstParty = liveGithubQuestion
+        ? await fetchFirstPartyContext(question)
+        : {
+            context: '',
+            sources: [
+              {
+                url: 'https://checkmyprofolio.github.io/',
+                title: 'Vidit Shah — published portfolio',
+                kind: 'portfolio' as const,
+              },
+            ],
+          };
 
       const system = `You are Profolio AI, the professional AI layer of Vidit Shah's public portfolio.
 
@@ -406,20 +422,22 @@ STYLE
 - Do not dump raw source URLs into the answer; native citations and the Sources pill handle attribution.
 - Never output JSON.
 
-LIVE FIRST-PARTY SOURCES:
+LIVE GITHUB SOURCES (only populated for explicit GitHub/repository questions):
 ${firstParty.context}
 
-CLIENT-SIDE PORTFOLIO EVIDENCE:
+PUBLISHED PORTFOLIO EVIDENCE:
 ${clientEvidence}`;
 
       const conversation = history.length
-        ? `\n\nCONVERSATION HISTORY:\n${history
+        ? `\n\nRECENT CONTEXT:\n${history
+            .slice(-2)
             .map((item) => `${item.role.toUpperCase()}: ${item.content}`)
             .join('\n')}`
         : '';
 
       const input =
         system +
+        `\n\nPUBLISHED PORTFOLIO EVIDENCE:\n${clientEvidence}` +
         conversation +
         `\n\nVISITOR QUESTION:\n${question}`;
 
@@ -443,7 +461,7 @@ ${clientEvidence}`;
             { role: 'user', content: question },
           ],
           stream: true,
-          max_tokens: 700,
+          max_tokens: 320,
           temperature: 0.15,
           top_p: 0.9,
           seed: 17,
