@@ -1,17 +1,30 @@
 import { portfolioFacts } from './portfolio-knowledge';
 
-export const MODEL_ID = '@cf/meta/llama-3.2-1b-instruct';
-export const CONTEXT_WINDOW = 60000;
+export const MODEL_ID = '@cf/meta/llama-3.2-3b-instruct';
+export const CONTEXT_WINDOW = 80000;
 export const PORTFOLIO_AI_ENDPOINT =
-  process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT || 'https://checkmyprofolio-github-io.viditshah5656.workers.dev';
+  process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT ||
+  'https://checkmyprofolio-github-io.viditshah5656.workers.dev';
+
+const REQUEST_TIMEOUT_MS = 25000;
+const HEALTH_TIMEOUT_MS = 6000;
 
 export type PortfolioStreamEvent = {
-  event: 'scope'|'retrieval'|'model-loading'|'model-ready'|'token'|'grounding'|'complete'|'error';
+  event:
+    | 'scope'
+    | 'retrieval'
+    | 'model-loading'
+    | 'model-ready'
+    | 'token'
+    | 'grounding'
+    | 'complete'
+    | 'error';
   data: string;
 };
+
 export type RemotePortfolioAnswer = {
   answer: string;
-  mode: 'model-generated'|'scope'|'error';
+  mode: 'model-generated' | 'scope' | 'error';
   notice?: string;
   sources: string[];
   model?: string;
@@ -46,7 +59,7 @@ function evidence(question: string): string {
 
   const matched = portfolioFacts.projects.filter((p) => {
     const text = `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')} ${p.buildNotes}`.toLowerCase();
-    return text.split(/\\W+/).some((term) => term.length > 3 && q.includes(term));
+    return text.split(/\W+/).some((term) => term.length > 3 && q.includes(term));
   });
 
   result.projects = (matched.length ? matched : portfolioFacts.projects).map(
@@ -67,19 +80,64 @@ function evidence(question: string): string {
 function sourceList(question: string): string[] {
   const q = question.toLowerCase();
   const sources = new Set<string>(['Verified portfolio record']);
+
   for (const p of portfolioFacts.projects) {
     const text = `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
-    if (text.split(/\\W+/).some((term) => term.length > 3 && q.includes(term))) {
+    if (text.split(/\W+/).some((term) => term.length > 3 && q.includes(term))) {
       if (p.page) sources.add(p.page);
       if (p.githubUrl && p.githubUrl !== '#') sources.add(p.githubUrl);
     }
   }
+
   return [...sources].slice(0, 7);
 }
 
 function normalize(answer: string) {
   const text = answer.trim();
-  return /^#\\s/m.test(text) ? text : `# Here’s the answer 👋\\n\\n${text}`;
+  return /^#\s/m.test(text)
+    ? text
+    : `# Here’s the answer 👋\n\n${text}`;
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error(`Remote AI request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+export async function checkPortfolioAI(): Promise<boolean> {
+  try {
+    const response = await fetchWithTimeout(
+      PORTFOLIO_AI_ENDPOINT,
+      { method: 'GET', cache: 'no-store' },
+      HEALTH_TIMEOUT_MS,
+    );
+
+    if (!response.ok) return false;
+
+    const data = (await response.json()) as {
+      ok?: boolean;
+      model?: string;
+    };
+
+    return data.ok === true && typeof data.model === 'string' && data.model.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export async function streamPortfolioQuestion(
@@ -87,42 +145,73 @@ export async function streamPortfolioQuestion(
   emit: (event: PortfolioStreamEvent) => void,
   history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
 ): Promise<RemotePortfolioAnswer> {
-  emit({ event: 'scope', data: 'The remote LLM is deciding whether this question is answerable.' });
-  emit({ event: 'retrieval', data: 'Providing the relevant verified portfolio context.' });
-  emit({ event: 'model-loading', data: 'Sending the question to the remote GPU inference server…' });
+  emit({
+    event: 'scope',
+    data: 'Checking the portfolio question against verified evidence.',
+  });
+  emit({
+    event: 'retrieval',
+    data: 'Providing the relevant verified portfolio context.',
+  });
+  emit({
+    event: 'model-loading',
+    data: 'Sending the question to the remote GPU inference server…',
+  });
 
   try {
-    const response = await fetch(PORTFOLIO_AI_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        question,
-        evidence: evidence(question),
-        history: history.slice(-8),
-        source: 'checkmyprofolio.github.io',
-      }),
-    });
+    const response = await fetchWithTimeout(
+      PORTFOLIO_AI_ENDPOINT,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question,
+          evidence: evidence(question),
+          history: history.slice(-8),
+          source: 'checkmyprofolio.github.io',
+        }),
+      },
+      REQUEST_TIMEOUT_MS,
+    );
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      throw new Error(
-        `Remote AI server returned HTTP ${response.status}${detail ? `: ${detail.slice(0, 180)}` : ''}`,
-      );
-    }
+    const contentType = response.headers.get('content-type') || '';
+    const rawBody = await response.text();
 
-    const data = await response.json() as {
+    let data: {
       answer?: string;
       model?: string;
       decision?: 'answer' | 'refuse';
       style?: string;
       evidenceConstrained?: boolean;
-    };
+      error?: string;
+      code?: string;
+    } = {};
 
-    if (!data.answer?.trim()) throw new Error('Remote GPU model returned an empty response.');
+    if (rawBody) {
+      try {
+        data = JSON.parse(rawBody);
+      } catch {
+        throw new Error(
+          `Remote AI returned invalid JSON (HTTP ${response.status}).`,
+        );
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        data.error
+          ? `Remote AI server returned HTTP ${response.status}: ${data.error}`
+          : `Remote AI server returned HTTP ${response.status}.`,
+      );
+    }
+
+    if (!data.answer?.trim()) {
+      throw new Error('Remote GPU model returned an empty response.');
+    }
 
     emit({
       event: 'model-ready',
-      data: `${data.model || MODEL_ID} · server-side inference · decision: ${data.decision || 'unknown'} · style: ${data.style || 'auto'}`,
+      data: `${data.model || MODEL_ID} · server-side inference · decision: ${data.decision || 'answer'} · style: ${data.style || 'direct'}`,
     });
     emit({ event: 'token', data: data.answer });
     emit({
@@ -140,19 +229,17 @@ export async function streamPortfolioQuestion(
       model: data.model || MODEL_ID,
     };
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail =
+      error instanceof Error ? error.message : String(error);
+
     emit({ event: 'error', data: detail });
     emit({ event: 'complete', data: 'Remote generation failed.' });
 
     return {
-      answer: `# Remote AI is not connected yet 🔧
+      answer: `# Remote AI is temporarily unavailable 🔧
 
 ## What happened
-- The portfolio is configured for **server-side inference**.
-- The model is **not downloaded or executed on this device**.
-- The remote inference endpoint could not be reached.
-
----
+The portfolio tried to reach its server-side AI endpoint, but the request could not be completed.
 
 ## Server
 - **Model:** ${MODEL_ID}
