@@ -30,6 +30,8 @@ jobs:
         run: npm install
       - name: Build with Next.js
         run: npm run build
+      - name: Typecheck Worker
+        run: npx tsc -p worker/tsconfig.json --noEmit
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
