@@ -166,24 +166,97 @@ function defaultSources(question: string): PortfolioCitation[] {
   return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
 }
 
+function emojiFor(text: string, fallback = '✨') {
+  const value = text.toLowerCase();
+  if (/\b(?:meeraai|ai|llm|model|inference|rag|qwen|llama)\b/.test(value)) return '🧠';
+  if (/\b(?:project|projects|built|build|architecture|system)\b/.test(value)) return '🚀';
+  if (/\b(?:skill|skills|stack|technology|technologies|python|typescript|javascript|react|fastapi|electron)\b/.test(value)) return '💻';
+  if (/\b(?:education|degree|college|university|cgpa|graduat|course|curriculum)\b/.test(value)) return '🎓';
+  if (/\b(?:robotics|robot|automation|vision|control|plc|microcontroller|iot)\b/.test(value)) return '🤖';
+  if (/\b(?:github|repository|repo|code|source)\b/.test(value)) return '🔧';
+  if (/\b(?:contact|email|linkedin|reach)\b/.test(value)) return '📫';
+  if (/\b(?:about|vidit|profile|background)\b/.test(value)) return '👋';
+  return fallback;
+}
+
+function hasEmoji(text: string) {
+  return Array.from(text).some((char) => {
+    const code = char.codePointAt(0) || 0;
+    return (
+      (code >= 0x1f300 && code <= 0x1faff) ||
+      (code >= 0x2600 && code <= 0x27bf)
+    );
+  });
+}
+
+function enrichWithEmojis(answer: string) {
+  const lines = answer.split('\n');
+  const output: string[] = [];
+  let codeBlock = false;
+  let emojiCount = 0;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+
+    if (line.startsWith('\\`\\`\\`')) {
+      codeBlock = !codeBlock;
+      output.push(raw);
+      continue;
+    }
+
+    if (codeBlock || !line) {
+      output.push(raw);
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,3})\\s+(.+)$/);
+    if (heading) {
+      const title = heading[2].replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').trim();
+      const emoji = emojiFor(title, emojiCount % 2 ? '✨' : '🚀');
+      output.push(`${heading[1]} ${title} ${emoji}`);
+      emojiCount += 1;
+      continue;
+    }
+
+    const bullet = line.match(/^([-*+])\\s+(.+)$/);
+    if (bullet && emojiCount < 8) {
+      const text = bullet[2];
+      output.push(`${bullet[1]} ${hasEmoji(text) ? text : `${emojiFor(text)} ${text}`}`);
+      emojiCount += hasEmoji(text) ? 0 : 1;
+      continue;
+    }
+
+    output.push(raw);
+  }
+
+  // Guarantee that every substantive generated answer has visible emoji
+  // accents even when the 3B model ignores the formatting instruction.
+  if (!hasEmoji(output.join('\n'))) {
+    const firstContent = output.findIndex((line) => line.trim().length > 0);
+    if (firstContent >= 0) {
+      output[firstContent] = `${emojiFor(output[firstContent])} ${output[firstContent]}`;
+    }
+  }
+
+  return output.join('\n');
+}
+
 function normalize(answer: string) {
   let text = answer.trim();
 
   text = text
-    .replace(/^\s*#{1,6}\s*here[’']s the answer\s*/i, '')
-    .replace(/^\s*#{1,6}\s*here is the answer\s*/i, '')
-    .replace(/^\s*\`{3}(?:markdown|md)?\s*/i, '')
-    .replace(/\s*\`{3}\s*$/i, '')
+    .replace(/^\\s*#{1,6}\\s*here[’']s the answer\\s*/i, '')
+    .replace(/^\\s*#{1,6}\\s*here is the answer\\s*/i, '')
+    .replace(/^\\s*\\`{3}(?:markdown|md)?\\s*/i, '')
+    .replace(/\\s*\\`{3}\\s*$/i, '')
     .trim();
 
-  // Keep the final response self-contained without stripping legitimate
-  // content such as headings or useful rhetorical punctuation.
-  const lines = text.split(/\n+/);
+  const lines = text.split(/\\n+/);
   while (lines.length) {
     const last = lines[lines.length - 1].trim();
     if (
       /^(?:would you like|do you want|want me to|anything else|let me know|need more|shall i|can i help)/i.test(last) ||
-      /^.*\b(?:would you like|do you want|want me to|anything else|let me know)\b.*\?\s*$/i.test(last)
+      /^.*\\b(?:would you like|do you want|want me to|anything else|let me know)\\b.*\\?\\s*$/i.test(last)
     ) {
       lines.pop();
       continue;
@@ -191,7 +264,7 @@ function normalize(answer: string) {
     break;
   }
 
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return enrichWithEmojis(lines.join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim());
 }
 
 async function fetchWithTimeout(
