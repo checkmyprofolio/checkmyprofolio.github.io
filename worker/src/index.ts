@@ -134,12 +134,14 @@ async function fetchFirstPartyContext(
       fetchSource(
         source,
         source.url.includes('/engineering-profile.ts')
-          ? 8500
+          ? 6000
           : source.url.includes('/data.ts')
-            ? 6500
+            ? 5000
             : source.url.includes('/repos?')
-              ? 18000
-              : 6000,
+              ? 7000
+              : source.url.includes('api.github.com/users/')
+                ? 3000
+                : 4000,
         source.url.includes('api.github.com')
           ? { headers: { Accept: 'application/vnd.github+json' } }
           : undefined,
@@ -177,10 +179,10 @@ async function fetchFirstPartyContext(
         .slice(0, 2);
 
       const candidates = ranked.length
-        ? ranked
+        ? ranked.slice(0, 1)
         : repos
             .filter((repo) => repo.name && repo.full_name && repo.default_branch)
-            .slice(0, 2)
+            .slice(0, 1)
             .map((repo) => ({ repo, score: 0 }));
 
       repoReadmes = (
@@ -205,7 +207,7 @@ async function fetchFirstPartyContext(
 
               if (!response.ok) return null;
 
-              const text = truncate((await response.text()).trim(), 6500);
+              const text = truncate((await response.text()).trim(), 4500);
               return text ? { source, text } : null;
             } catch {
               return null;
@@ -222,16 +224,18 @@ async function fetchFirstPartyContext(
   const unique = new Map<string, { source: Source; text: string }>();
   for (const item of all) unique.set(item.source.url, item);
 
-  return {
-    context: [...unique.values()]
-      .map(
-        (item) =>
-          `SOURCE: ${item.source.title}
+  const context = [...unique.values()]
+    .map(
+      (item) =>
+        `SOURCE: ${item.source.title}
 URL: ${item.source.url}
 CONTENT:
 ${item.text}`,
-      )
-      .join('\n\n---\n\n'),
+    )
+    .join('\n\n---\n\n');
+
+  return {
+    context: truncate(context, 22000),
     sources: [...unique.values()].map((item) => item.source),
   };
 }
@@ -408,7 +412,7 @@ ${clientEvidence}`;
             {
               input,
               stream: true,
-              max_output_tokens: 900,
+              max_output_tokens: 700,
               temperature: 0.15,
               top_p: 0.9,
               tools: [{ type: 'web_search_preview' }],
@@ -438,7 +442,7 @@ ${clientEvidence}`;
                 { role: 'user', content: question },
               ],
               stream: true,
-              max_tokens: 900,
+              max_tokens: 700,
               temperature: 0.15,
               top_p: 0.9,
             });
@@ -456,7 +460,7 @@ ${clientEvidence}`;
                 { role: 'user', content: question },
               ],
               stream: true,
-              max_tokens: 900,
+              max_tokens: 700,
               temperature: 0.15,
               top_p: 0.9,
               seed: 17,
