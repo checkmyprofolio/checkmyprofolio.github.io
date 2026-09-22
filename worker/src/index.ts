@@ -420,15 +420,19 @@ RESPONSE STYLE
 - Sound natural, confident, warm, and professional.
 - Use Markdown when it improves readability.
 - Use a concise H1 for substantial factual answers, not for simple greetings or one-line replies.
-- Use H2/H3 sections only when they genuinely help.
+- Use H2/H3 sections to organize detailed answers naturally.
+- For project questions, cover purpose, approach/architecture, technologies, evidence/validation, limitations, and relevant next steps when those facts are available.
+- For skills or education questions, group the information into clear categories and explain what the evidence means.
 - Use bullets or numbered lists for multiple technical points.
 - Use 3-6 relevant emojis naturally across substantive answers; headings and major bullet groups should usually include an emoji.
 - For simple greetings, use 1-2 emojis.
 - For technical answers, use emojis to visually distinguish major ideas without putting one in every sentence.
+- When a verified portfolio or GitHub URL is provided in the evidence, include it as a Markdown link with a descriptive label. For project answers, include a small "Explore the project 🔗" section with the relevant portfolio/GitHub links.
+- Do not invent URLs. Never claim a link exists unless it is supplied in the evidence.
 - Avoid repetitive phrases such as "Here is the answer", "Certainly", or "As an AI".
 - Never output JSON.
 - Never end with a question, "let me know", or an invitation to continue.
-- Keep most answers around 100-240 words; be shorter for casual conversation and longer only when the question needs it.
+- Keep simple answers concise, but for substantive questions provide roughly 250-450 words when the available evidence supports it.
 
 EXAMPLES
 Visitor: "Hi"
@@ -452,6 +456,12 @@ ${clientEvidence}`;
 
       // Production inference stays on the fast 3B model, but the browser
       // receives one complete response. This avoids choppy token rendering.
+      const detailedQuestion =
+        /\b(?:detail|detailed|deep|explain|explanation|architecture|features|all|compare|comparison|how does|why|skills|projects|experience|education|technologies|technology|capabilities)\b/i.test(
+          question,
+        );
+      const maxTokens = detailedQuestion ? 680 : 420;
+
       let result: unknown;
       try {
         result = await env.AI.run(MODEL, {
@@ -460,7 +470,7 @@ ${clientEvidence}`;
             { role: 'user', content: question },
           ],
           stream: true,
-          max_tokens: 320,
+          max_tokens: maxTokens,
           temperature: 0.2,
           top_p: 0.9,
           seed: 17,
