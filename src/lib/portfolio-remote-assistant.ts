@@ -446,6 +446,11 @@ function isTextEvent(
 }
 
 function extractStreamText(event: ServerSseEvent): string {
+  // Responses API streaming uses a top-level delta on response.output_text.delta.
+  if (typeof event.delta === 'string') {
+    return event.delta;
+  }
+
   const choice = event.choices?.[0];
 
   if (typeof choice?.delta?.content === 'string') {
