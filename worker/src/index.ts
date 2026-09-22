@@ -323,7 +323,7 @@ export default {
         firstPartySources: true,
         citations: true,
         generalQuestions: true,
-        responseFormat: 'complete',
+        responseFormat: 'stream',
       });
     }
 
@@ -459,13 +459,13 @@ ${clientEvidence}`;
             { role: 'system', content: system },
             { role: 'user', content: question },
           ],
-          stream: false,
-          max_tokens: 360,
+          stream: true,
+          max_tokens: 320,
           temperature: 0.2,
           top_p: 0.9,
           seed: 17,
         });
-      } catch (error) {
+      } catch {
         return json(
           {
             error: 'The AI service could not complete the request.',
@@ -475,46 +475,24 @@ ${clientEvidence}`;
         );
       }
 
-      const responseText = scrubRuntimeDisclosure(
-        (() => {
-          if (typeof result === 'string') return result;
-          if (!result || typeof result !== 'object') return '';
-
-          const value = result as Record<string, unknown>;
-          if (typeof value.response === 'string') return value.response;
-          if (typeof value.answer === 'string') return value.answer;
-
-          const choices = Array.isArray(value.choices) ? value.choices : [];
-          const first = choices[0];
-          if (first && typeof first === 'object') {
-            const choice = first as Record<string, unknown>;
-            if (typeof choice.text === 'string') return choice.text;
-
-            const message = choice.message;
-            if (message && typeof message === 'object') {
-              const content = (message as Record<string, unknown>).content;
-              if (typeof content === 'string') return content;
-            }
-          }
-
-          return '';
-        })().trim(),
-      );
-
-      if (!responseText) {
+      if (!(result instanceof ReadableStream)) {
         return json(
           {
-            error: 'The AI service returned no answer.',
-            code: 'EMPTY_RESPONSE',
+            error: 'The AI service did not return a stream.',
+            code: 'STREAM_UNAVAILABLE',
           },
           502,
         );
       }
 
-      return json({
-        answer: responseText,
-        mode: 'model-generated',
-        sources: firstParty.sources,
+      return new Response(result, {
+        status: 200,
+        headers: {
+          ...CORS_HEADERS,
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'X-Portfolio-Sources': sourceHeader(firstParty.sources),
+          'X-Accel-Buffering': 'no',
+        },
       });
     } catch (error) {
       return json(
