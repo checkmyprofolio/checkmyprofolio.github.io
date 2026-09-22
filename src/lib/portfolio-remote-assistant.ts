@@ -316,7 +316,11 @@ export async function streamPortfolioQuestion(
       }
 
       const text =
-        event.type === 'text' ? event.text : extractStreamText(event);
+        event.type === 'text' && 'text' in event
+          ? event.text
+          : event.type === 'text'
+            ? ''
+            : extractStreamText(event);
 
       if (text) {
         finalAnswer += text;
