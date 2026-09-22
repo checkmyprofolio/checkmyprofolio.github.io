@@ -287,7 +287,7 @@ const RUNTIME_PRIVACY_REPLY =
   "## Profolio AI privacy 🔒\nI keep my underlying model, provider, and backend implementation details private. I can explain my capabilities and how I use Vidit's published portfolio information, but I do not expose the runtime technology behind this assistant.";
 
 function isRuntimePrivacyQuestion(question: string) {
-  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine)|which\s+(?:model|llm|provider|engine)|what\s+(?:are|is)\s+you\s+(?:running|powered|built)\s+(?:on|with)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|who\s+provides\s+you|are\s+you\s+(?:llama|gpt|gemma|mistral)|tell\s+me\s+(?:your|the)\s+(?:backend|model|llm|provider)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|backend\s+stack|model\s+name)\b/i.test(
+  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine)|which\s+(?:model|llm|provider|engine)|what\s+(?:are|is)\s+you\s+(?:running|powered|built)\s+(?:on|with)|what\s+(?:powers|runs|drives)\s+(?:this|the)\s+(?:chat|assistant|portfolio\s+ai)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|who\s+provides\s+you|are\s+you\s+(?:llama|gpt|gemma|mistral)|tell\s+me\s+(?:your|the)\s+(?:backend|model|llm|provider)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|backend\s+stack|model\s+name)\b/i.test(
     question,
   );
 }
@@ -362,7 +362,6 @@ export default {
               kind: 'portfolio' as const,
             },
           ],
-          runtimeDetails: false,
         });
       }
 
@@ -510,7 +509,6 @@ ${clientEvidence}`;
         answer: responseText,
         mode: 'model-generated',
         sources: firstParty.sources,
-        runtimeDetails: false,
       });
     } catch (error) {
       return json(
