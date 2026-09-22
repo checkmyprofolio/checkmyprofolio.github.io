@@ -1,6 +1,6 @@
 import { portfolioFacts } from './portfolio-knowledge';
 
-export const MODEL_ID = '@cf/meta/llama-3.2-3b-instruct';
+export const MODEL_ID = 'openai/gpt-5.5';
 export const CONTEXT_WINDOW = 80000;
 export const PORTFOLIO_AI_ENDPOINT =
   process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT ||
@@ -9,6 +9,12 @@ export const PORTFOLIO_AI_ENDPOINT =
 const REQUEST_TIMEOUT_MS = 30000;
 const HEALTH_TIMEOUT_MS = 6000;
 
+export type PortfolioCitation = {
+  url: string;
+  title: string;
+  kind: 'web' | 'portfolio' | 'github';
+};
+
 export type PortfolioStreamEvent = {
   event:
     | 'scope'
@@ -16,6 +22,7 @@ export type PortfolioStreamEvent = {
     | 'model-loading'
     | 'model-ready'
     | 'token'
+    | 'citation'
     | 'grounding'
     | 'complete'
     | 'error';
@@ -26,20 +33,26 @@ export type RemotePortfolioAnswer = {
   answer: string;
   mode: 'model-generated' | 'scope' | 'error';
   notice?: string;
-  sources: string[];
+  sources: PortfolioCitation[];
   model?: string;
 };
 
 type ServerSseEvent = {
   type?: string;
-  response?: string;
+  delta?: string;
+  response?: unknown;
   answer?: string;
   result?: { response?: string; answer?: string };
   choices?: Array<{
     delta?: { content?: string };
     text?: string;
   }>;
-  error?: string;
+  annotation?: unknown;
+  annotations?: unknown;
+  item?: unknown;
+  output?: unknown;
+  error?: { message?: string; code?: string };
+  message?: string;
   code?: string;
 };
 
@@ -97,24 +110,49 @@ function evidence(question: string): string {
   return JSON.stringify(result).slice(0, 30000);
 }
 
-function sourceList(question: string): string[] {
+function defaultSources(question: string): PortfolioCitation[] {
   const q = question.toLowerCase();
-  const sources = new Set<string>(['Verified portfolio record']);
+  const sources: PortfolioCitation[] = [
+    {
+      url: 'https://checkmyprofolio.github.io/',
+      title: 'Vidit Shah — published portfolio',
+      kind: 'portfolio',
+    },
+    {
+      url: 'https://github.com/viditshah5656',
+      title: 'Vidit Shah — GitHub profile',
+      kind: 'github',
+    },
+  ];
 
   for (const p of portfolioFacts.projects) {
     const text =
       `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
+
     if (
       text
         .split(/\W+/)
         .some((term) => term.length > 3 && q.includes(term))
     ) {
-      if (p.page) sources.add(p.page);
-      if (p.githubUrl && p.githubUrl !== '#') sources.add(p.githubUrl);
+      if (p.page) {
+        sources.push({
+          url: `https://checkmyprofolio.github.io${p.page}`,
+          title: `${p.title} — portfolio`,
+          kind: 'portfolio',
+        });
+      }
+
+      if (p.githubUrl && p.githubUrl !== '#') {
+        sources.push({
+          url: p.githubUrl,
+          title: `${p.title} — GitHub`,
+          kind: 'github',
+        });
+      }
     }
   }
 
-  return [...sources].slice(0, 7);
+  return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
 }
 
 function normalize(answer: string) {
@@ -222,13 +260,16 @@ export async function checkPortfolioAI(): Promise<boolean> {
       ok?: boolean;
       model?: string;
       streaming?: boolean;
+      webSearch?: boolean;
+      firstPartySources?: boolean;
     };
 
     return (
       data.ok === true &&
       data.streaming === true &&
-      typeof data.model === 'string' &&
-      data.model.length > 0
+      data.webSearch === true &&
+      data.firstPartySources === true &&
+      typeof data.model === 'string'
     );
   } catch {
     return false;
@@ -240,17 +281,19 @@ export async function streamPortfolioQuestion(
   emit: (event: PortfolioStreamEvent) => void,
   history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
 ): Promise<RemotePortfolioAnswer> {
+  const fallbackSources = defaultSources(question);
+
   emit({
     event: 'scope',
-    data: 'Checking the question against verified portfolio evidence.',
+    data: 'Checking the question against first-party portfolio and GitHub sources.',
   });
   emit({
     event: 'retrieval',
-    data: 'Sending only the relevant portfolio context to the remote model.',
+    data: 'Fetching current portfolio and GitHub context, with live web search available.',
   });
   emit({
     event: 'model-loading',
-    data: 'Opening a live server-side token stream…',
+    data: 'Opening a live server-side response stream…',
   });
 
   try {
@@ -292,9 +335,25 @@ export async function streamPortfolioQuestion(
       throw new Error('Remote AI did not provide a streaming response body.');
     }
 
+    const headerSources = citationsFromHeader(
+      response.headers.get('X-Portfolio-Sources'),
+    );
+
+    const sourceMap = new Map<string, PortfolioCitation>();
+    for (const source of [...fallbackSources, ...headerSources]) {
+      sourceMap.set(source.url, source);
+      emit({
+        event: 'citation',
+        data: JSON.stringify(source),
+      });
+    }
+
+    const activeModel =
+      response.headers.get('X-Portfolio-Model') || MODEL_ID;
+
     emit({
       event: 'model-ready',
-      data: `${MODEL_ID} · server-side SSE stream connected`,
+      data: `${activeModel} · live response stream connected`,
     });
 
     const reader = response.body.getReader();
@@ -303,85 +362,104 @@ export async function streamPortfolioQuestion(
     let finalAnswer = '';
     let streamFinished = false;
 
-    const handleEvent = (
-      event: ServerSseEvent | { type: 'text'; text: string },
-    ) => {
+    const processEvent = (event: ServerSseEvent | { type: 'text'; text: string }) => {
       if (event.type === 'done') {
         streamFinished = true;
         return;
       }
 
-      if (event.type === 'error') {
-        throw new Error(event.error || 'Remote AI streaming failed.');
+      if (event.type === 'text') {
+        if (event.text) {
+          finalAnswer += event.text;
+          emit({ event: 'token', data: event.text });
+        }
+        return;
       }
 
-      const text =
-        event.type === 'text' && 'text' in event
-          ? event.text
-          : event.type === 'text'
-            ? ''
-            : extractStreamText(event);
+      if (event.type === 'error' || event.type === 'response.failed') {
+        throw new Error(
+          event.error?.message ||
+            event.message ||
+            'Remote AI streaming failed.',
+        );
+      }
 
-      if (text) {
+      const citationMap = new Map<string, PortfolioCitation>();
+      collectCitations(event, citationMap);
+
+      for (const citation of citationMap.values()) {
+        sourceMap.set(citation.url, citation);
+        emit({
+          event: 'citation',
+          data: JSON.stringify(citation),
+        });
+      }
+
+      const type = event.type || '';
+
+      if (
+        type === 'response.completed' ||
+        type === 'response.done'
+      ) {
+        streamFinished = true;
+        return;
+      }
+
+      const text = extractStreamText(event);
+      if (text && type !== 'response.output_text.done') {
         finalAnswer += text;
         emit({ event: 'token', data: text });
       }
     };
 
-    const processCompleteLines = () => {
-      const normalized = buffer.replace(/\r\n/g, '\n');
-      const lines = normalized.split('\n');
+    while (!streamFinished) {
+      const { value, done } = await reader.read();
+      if (done) break;
 
-      // Keep the final incomplete line for the next network chunk.
+      buffer += decoder.decode(value, { stream: true });
+      const normalized = buffer.replace(/\\r\\n/g, '\\n');
+      const lines = normalized.split('\\n');
+
       buffer = lines.pop() || '';
 
       for (const line of lines) {
         const event = parseSseLine(line);
         if (!event) continue;
-        handleEvent(event);
+
+        processEvent(event);
         if (streamFinished) break;
       }
-    };
-
-    while (!streamFinished) {
-      const { value, done } = await reader.read();
-
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      processCompleteLines();
     }
 
     buffer += decoder.decode();
+
     if (!streamFinished && buffer.trim()) {
       const event = parseSseLine(buffer);
-      if (event) handleEvent(event);
+      if (event) processEvent(event);
     }
 
-    const serverModel = MODEL_ID;
     const answer = normalize(finalAnswer);
 
     if (!answer) {
-      throw new Error('Remote GPU model returned an empty streaming response.');
+      throw new Error('Remote AI returned an empty streamed response.');
     }
+
+    const sources = [...sourceMap.values()].slice(0, 10);
 
     emit({
       event: 'grounding',
-      data: 'Answer generated from verified portfolio evidence.',
+      data: 'Answer generated from current first-party sources and, when needed, live web search.',
     });
     emit({
       event: 'complete',
-      data: `Remote token stream complete · ${serverModel}`,
+      data: `Live stream complete · ${activeModel}`,
     });
 
     return {
       answer,
       mode: 'model-generated',
-      sources: [
-        ...sourceList(question),
-        `${serverModel} · remote GPU`,
-      ],
-      model: MODEL_ID,
+      sources,
+      model: activeModel,
     };
   } catch (error) {
     const detail =
@@ -394,16 +472,16 @@ export async function streamPortfolioQuestion(
     });
 
     return {
-      answer: `# Remote AI is temporarily unavailable 🔧
+      answer: `# Remote AI is temporarily unavailable
 
-The portfolio could not complete its live server-side AI stream.
+The portfolio could not complete its live server-side AI request.
 
-**Server model:** ${MODEL_ID}
+**Model:** ${MODEL_ID}
 
-**Inference:** remote GPU · browser does not download the model`,
+**Inference:** server-side · live web search + first-party portfolio/GitHub retrieval`,
       mode: 'error',
       notice: detail,
-      sources: sourceList(question),
+      sources: fallbackSources,
       model: MODEL_ID,
     };
   }
