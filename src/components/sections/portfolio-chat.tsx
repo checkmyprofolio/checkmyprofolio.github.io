@@ -367,7 +367,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
             {message.role === 'assistant' && <AssistantHeader sources={message.sources} />}
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">Server-side response · tokens streamed live</p>}
+            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">Server-side response · complete server response</p>}
             {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">Portfolio-only scope</p>}
             {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">Remote model response unavailable</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
