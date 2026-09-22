@@ -198,7 +198,7 @@ function enrichWithEmojis(answer: string) {
   for (const raw of lines) {
     const line = raw.trim();
 
-    if (line.startsWith('\\`\\`\\`')) {
+    if (line.startsWith('```')) {
       codeBlock = !codeBlock;
       output.push(raw);
       continue;
@@ -211,7 +211,16 @@ function enrichWithEmojis(answer: string) {
 
     const heading = line.match(/^(#{1,3})\\s+(.+)$/);
     if (heading) {
-      const title = heading[2].replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').trim();
+      const title = Array.from(heading[2])
+        .filter((char) => {
+          const code = char.codePointAt(0) || 0;
+          return !(
+            (code >= 0x1f300 && code <= 0x1faff) ||
+            (code >= 0x2600 && code <= 0x27bf)
+          );
+        })
+        .join('')
+        .trim();
       const emoji = emojiFor(title, emojiCount % 2 ? '✨' : '🚀');
       output.push(`${heading[1]} ${title} ${emoji}`);
       emojiCount += 1;
