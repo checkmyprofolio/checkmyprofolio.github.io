@@ -310,8 +310,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       sending.current = false;
       setBusy(false);
       setModelLoading(false);
-      setDraftAnswer('');
-    }
+     }
   }
 
   return <>
