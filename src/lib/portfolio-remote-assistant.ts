@@ -87,6 +87,9 @@ function evidence(question: string): string {
       buildNotes: matched.length ? buildNotes : undefined,
       githubUrl: githubUrl === '#' ? undefined : githubUrl,
       page,
+      portfolioUrl: page
+        ? `https://checkmyprofolio.github.io${page}`
+        : undefined,
     }));
   }
 
@@ -214,7 +217,29 @@ function enrichWithEmojis(answer: string) {
   return output.join('\n');
 }
 
-function normalize(answer: string) {
+function addRelevantLinks(answer: string, question: string) {
+  const q = question.toLowerCase();
+  const projectIntent = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance|profolio)\b/i.test(q);
+  if (!projectIntent) return answer;
+
+  const matched = portfolioFacts.projects.filter((p) => {
+    const haystack = `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
+    return haystack.split(/\W+/).some((term) => term.length > 3 && q.includes(term));
+  });
+  const projects = matched.length ? matched : portfolioFacts.projects;
+  const links = projects
+    .slice(0, matched.length ? 3 : 6)
+    .flatMap((p) => {
+      const result: string[] = [];
+      if (p.page) result.push(`[${p.title} — portfolio](https://checkmyprofolio.github.io${p.page})`);
+      if (p.githubUrl && p.githubUrl !== '#') result.push(`[${p.title} — GitHub](${p.githubUrl})`);
+      return result;
+    });
+
+  if (!links.length || /###\s+(?:explore|project links)\b/i.test(answer)) return answer;
+  return `${answer}\n\n### Explore the project 🔗\n${links.map((link) => `- ${link}`).join('\n')}`;
+}
+function normalize(answer: string, question = '') {
   let text = answer.trim();
 
   // Small local models sometimes serialize Markdown line breaks as literal
@@ -270,7 +295,7 @@ function normalize(answer: string) {
   }
 
   const normalized = cleanLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-  return enrichWithEmojis(normalized);
+  return addRelevantLinks(enrichWithEmojis(normalized), question);
 }
 
 async function fetchWithTimeout(
@@ -501,7 +526,7 @@ export async function streamPortfolioQuestion(
 
     if (!response.body || !(response.headers.get('content-type') || '').includes('text/event-stream')) {
       const payload = (await response.json()) as { answer?: unknown; mode?: 'model-generated' | 'scope' | 'error'; notice?: string; sources?: PortfolioCitation[] };
-      const answer = typeof payload.answer === 'string' ? normalize(payload.answer) : '';
+      const answer = typeof payload.answer === 'string' ? normalize(payload.answer, question) : '';
       if (!answer) throw new Error('Remote AI returned an empty response.');
       emit({ event: 'complete', data: 'Response complete.' });
       return {
@@ -557,7 +582,7 @@ export async function streamPortfolioQuestion(
 
     if (buffer.trim()) processFrame(buffer);
 
-    const answer = normalize(fullAnswer);
+    const answer = normalize(fullAnswer, question);
     if (!answer) throw new Error('Remote AI returned an empty response.');
     emit({ event: 'grounding', data: 'Answer generated from published portfolio evidence.' });
     emit({ event: 'complete', data: 'Response complete.' });
