@@ -513,6 +513,38 @@ export async function streamPortfolioQuestion(
   history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
 ): Promise<RemotePortfolioAnswer> {
   const fallbackSources = defaultSources(question);
+  const trimmed = question.trim();
+  const identity = portfolioFacts.identity;
+
+  // Handle lightweight social turns locally so greetings and acknowledgements
+  // feel immediate instead of waiting for model inference.
+  if (/^(?:hi|hello|hey|heyy|hey there|yo|sup|good morning|good afternoon|good evening)[!.\\s]*$/i.test(trimmed)) {
+    const answer =
+      "Hey! 👋 I’m Profolio AI, the assistant for Vidit’s public portfolio. I can help with his projects, engineering work, skills, education, and technical background.";
+    emit({ event: 'complete', data: 'Immediate conversational response.' });
+    return { answer, mode: 'model-generated', sources: fallbackSources, model: MODEL_ID };
+  }
+
+  if (/^(?:thanks|thank you|thx|ty|got it|okay|ok|cool|nice|great|perfect)[!.\\s]*$/i.test(trimmed)) {
+    const answer = /^(?:thanks|thank you|thx|ty)/i.test(trimmed)
+      ? "You’re welcome. Glad that helped."
+      : "Got it.";
+    emit({ event: 'complete', data: 'Immediate conversational response.' });
+    return { answer, mode: 'model-generated', sources: fallbackSources, model: MODEL_ID };
+  }
+
+  if (
+    /\\b(?:birth date|birthdate|birthday|date of birth|dob)\\b/i.test(trimmed) &&
+    !Object.prototype.hasOwnProperty.call(identity, 'birthDate') &&
+    !Object.prototype.hasOwnProperty.call(identity, 'dateOfBirth')
+  ) {
+    const answer =
+      "### Personal detail
+I don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.";
+    emit({ event: 'complete', data: 'Unsupported personal detail declined.' });
+    return { answer, mode: 'model-generated', sources: fallbackSources, model: MODEL_ID };
+  }
+
 
   emit({
     event: 'scope',
