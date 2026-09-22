@@ -241,34 +241,13 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
   const [remoteStatus, setRemoteStatus] = useState<'checking' | 'ready' | 'offline'>('checking');
   const [streamEvents, setStreamEvents] = useState<PortfolioStreamEvent[]>([]);
   const [error, setError] = useState('');
-  const [draftAnswer, setDraftAnswer] = useState('');
   const [streamSources, setStreamSources] = useState<PortfolioCitation[]>([]);
   const end = useRef<HTMLDivElement>(null);
   const sending = useRef(false);
-  const tokenBuffer = useRef('');
-  const tokenFrame = useRef<number | null>(null);
 
   useEffect(() => {
     end.current?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-  }, [messages, busy, draftAnswer]);
-
-  useEffect(() => {
-    return () => {
-      if (tokenFrame.current !== null) cancelAnimationFrame(tokenFrame.current);
-    };
-  }, []);
-
-  const queueToken = (token: string) => {
-    tokenBuffer.current += token;
-    if (tokenFrame.current !== null) return;
-
-    tokenFrame.current = requestAnimationFrame(() => {
-      const next = tokenBuffer.current;
-      tokenBuffer.current = '';
-      tokenFrame.current = null;
-      if (next) setDraftAnswer((prev) => prev + next);
-    });
-  };
+  }, [messages, busy]);
 
   useEffect(() => {
     let active = true;
@@ -294,11 +273,6 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     setBusy(true);
     setModelLoading(true);
     setStreamEvents([]);
-    tokenBuffer.current = '';
-    if (tokenFrame.current !== null) {
-      cancelAnimationFrame(tokenFrame.current);
-      tokenFrame.current = null;
-    }
     setDraftAnswer('');
     setStreamSources([]);
     setError('');
@@ -309,11 +283,9 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         if (event.event !== 'token') {
           setStreamEvents((events) => [...events.slice(-5), event]);
         }
-        if (event.event === 'model-loading') setModelLoading(true);
-        if (event.event === 'model-ready') { setModelReady(true); setModelLoading(false); }
-        if (event.event === 'token') {
+        if (event.event === 'complete') {
           setModelLoading(false);
-          queueToken(event.data);
+          setModelReady(true);
         }
         if (event.event === 'citation') {
           try {
@@ -335,13 +307,6 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       setMessages(history.slice(0, -1));
       setInput(question);
     } finally {
-      if (tokenFrame.current !== null) {
-        cancelAnimationFrame(tokenFrame.current);
-        tokenFrame.current = null;
-      }
-      const remainingTokens = tokenBuffer.current;
-      tokenBuffer.current = '';
-      if (remainingTokens) setDraftAnswer((prev) => prev + remainingTokens);
       sending.current = false;
       setBusy(false);
       setModelLoading(false);
