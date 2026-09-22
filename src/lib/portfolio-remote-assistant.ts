@@ -151,47 +151,29 @@ async function fetchWithTimeout(
   }
 }
 
-function parseSseBlock(block: string): ServerSseEvent | null {
-  const dataLines = block
-    .split(/\r?\n/)
-    .filter((line) => line.startsWith('data:'))
-    .map((line) => line.slice(5).trimStart());
+function parseSseLine(
+  line: string,
+): ServerSseEvent | { type: 'text'; text: string } | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith('event:') || trimmed.startsWith('id:')) {
+    return null;
+  }
 
-  if (!dataLines.length) return null;
+  const data = trimmed.startsWith('data:')
+    ? trimmed.slice(5).trimStart()
+    : trimmed;
 
-  const data = dataLines.join('\n').trim();
   if (!data) return null;
   if (data === '[DONE]') return { type: 'done' };
 
   try {
     return JSON.parse(data) as ServerSseEvent;
   } catch {
-    return {
-      type: 'error',
-      error: 'Remote AI returned malformed SSE JSON.',
-      code: 'INVALID_STREAM_EVENT',
-    };
+    // Be tolerant of a plain-text streaming intermediary instead of turning
+    // a usable model token into a fatal parser error.
+    return { type: 'text', text: data };
   }
 }
-
-function parseCloudflareSse(
-  chunk: string,
-  onEvent: (event: ServerSseEvent) => void,
-) {
-  // SSE uses blank lines as event separators, but some intermediaries can
-  // split/flush data differently. Process complete lines too, so a valid
-  // Cloudflare event is never lost simply because the blank separator arrived
-  // in a different network chunk.
-  const normalized = chunk.replace(/\r\n/g, '\n');
-  const blocks = normalized.split('\n\n');
-
-  for (const block of blocks) {
-    const event = parseSseBlock(block);
-    if (event) onEvent(event);
-  }
-}
-
-
 
 function extractStreamText(event: ServerSseEvent): string {
   const choice = event.choices?.[0];
@@ -310,7 +292,9 @@ export async function streamPortfolioQuestion(
     let finalAnswer = '';
     let streamFinished = false;
 
-    const handleEvent = (event: ServerSseEvent) => {
+    const handleEvent = (
+      event: ServerSseEvent | { type: 'text'; text: string },
+    ) => {
       if (event.type === 'done') {
         streamFinished = true;
         return;
@@ -320,10 +304,27 @@ export async function streamPortfolioQuestion(
         throw new Error(event.error || 'Remote AI streaming failed.');
       }
 
-      const text = extractStreamText(event);
+      const text =
+        event.type === 'text' ? event.text : extractStreamText(event);
+
       if (text) {
         finalAnswer += text;
         emit({ event: 'token', data: text });
+      }
+    };
+
+    const processCompleteLines = () => {
+      const normalized = buffer.replace(/\r\n/g, '\n');
+      const lines = normalized.split('\n');
+
+      // Keep the final incomplete line for the next network chunk.
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const event = parseSseLine(line);
+        if (!event) continue;
+        handleEvent(event);
+        if (streamFinished) break;
       }
     };
 
@@ -333,47 +334,13 @@ export async function streamPortfolioQuestion(
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-
-      // Pull out complete SSE events. Keep the final partial event in buffer.
-      let separator = buffer.indexOf('\n\n');
-      while (separator >= 0) {
-        const block = buffer.slice(0, separator);
-        buffer = buffer.slice(separator + 2);
-
-        const event = parseSseBlock(block);
-        if (event) handleEvent(event);
-
-        if (streamFinished) break;
-        separator = buffer.indexOf('\n\n');
-      }
+      processCompleteLines();
     }
 
-    // Flush UTF-8 decoder and any final event that did not end with a blank
-    // separator before the ReadableStream closed.
     buffer += decoder.decode();
-
     if (!streamFinished && buffer.trim()) {
-      const normalized = buffer.replace(/\r\n/g, '\n');
-      const lines = normalized.split('\n');
-
-      // Handle one or more data: lines safely, including a final [DONE].
-      let dataLines: string[] = [];
-      const flushData = () => {
-        if (!dataLines.length) return;
-        const event = parseSseBlock(dataLines.join('\n'));
-        dataLines = [];
-        if (event) handleEvent(event);
-      };
-
-      for (const line of lines) {
-        if (line.startsWith('data:')) {
-          dataLines.push(line);
-        } else if (!line.trim()) {
-          flushData();
-        }
-      }
-
-      flushData();
+      const event = parseSseLine(buffer);
+      if (event) handleEvent(event);
     }
 
     const serverModel = MODEL_ID;
