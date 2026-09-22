@@ -21,8 +21,8 @@ type Source = {
   kind: SourceKind;
 };
 
-const MODEL = 'openai/gpt-5.5';
-const FALLBACK_MODEL = '@cf/meta/llama-3.2-3b-instruct';
+const MODEL = '@cf/meta/llama-3.2-3b-instruct-v2';
+const FALLBACK_MODEL = MODEL;
 const GATEWAY = 'default';
 
 const CORS_HEADERS = {
@@ -323,11 +323,11 @@ export default {
         fallbackModel: FALLBACK_MODEL,
         inference: 'server-side',
         streaming: true,
-        webSearch: true,
+        webSearch: false,
         firstPartySources: true,
         generalQuestions: true,
-        protocol: 'openai-responses-sse',
-        webSearchTool: 'web_search_preview',
+        protocol: 'chat-completions-sse',
+        webSearchTool: null,
       });
     }
 
@@ -423,105 +423,39 @@ ${clientEvidence}`;
         conversation +
         `\n\nVISITOR QUESTION:\n${question}`;
 
-      const needsWebSearch =
-        /\b(?:latest|today|current|recent|news|what happened|this week|this month|new release|new releases|launched|launch|announcement|announced|updated|update|2026)\b/i.test(
-          question,
-        );
-
+      // Keep the production portfolio assistant on the fast 3B model.
+      // Current-news/web-search tooling is intentionally not coupled to the
+      // model path so a tool failure cannot push requests onto a slower model.
       let result: unknown;
-      let activeModel = MODEL;
-      let webSearch = false;
+      const activeModel = MODEL;
+      const webSearch = false;
 
-      if (needsWebSearch) {
-        try {
-          result = await env.AI.run(
-            MODEL,
+      try {
+        result = await env.AI.run(MODEL, {
+          messages: [
             {
-              input,
-              stream: true,
-              max_output_tokens: 700,
-              temperature: 0.15,
-              top_p: 0.9,
-              tools: [{ type: 'web_search_preview' }],
+              role: 'system',
+              content:
+                system +
+                '\n\nUse only the retrieved portfolio/GitHub evidence for Vidit-specific facts. Do not claim live web verification.',
             },
-            {
-              gateway: {
-                id: GATEWAY,
-                skipCache: true,
-              },
-            },
-          );
-          webSearch = true;
-        } catch {
-          // Fall back to GPT-5.5 without web search before using the smaller
-          // compatibility model. This keeps normal questions on GPT-5.5 even
-          // when the native web-search tool is temporarily unavailable.
-          try {
-            result = await env.AI.run(MODEL, {
-              messages: [
-                {
-                  role: 'system',
-                  content:
-                    system +
-                    '\n\nLive web search is unavailable for this request. Do not make claims about current events that require live verification.',
-                },
-                ...history,
-                { role: 'user', content: question },
-              ],
-              stream: true,
-              max_tokens: 700,
-              temperature: 0.15,
-              top_p: 0.9,
-            });
-          } catch {
-            activeModel = FALLBACK_MODEL;
-            result = await env.AI.run(FALLBACK_MODEL, {
-              messages: [
-                {
-                  role: 'system',
-                  content:
-                    system +
-                    '\n\nLive web search is unavailable in fallback mode. Do not make claims about current events that require live verification.',
-                },
-                ...history,
-                { role: 'user', content: question },
-              ],
-              stream: true,
-              max_tokens: 700,
-              temperature: 0.15,
-              top_p: 0.9,
-              seed: 17,
-            });
-          }
-        }
-      } else {
-        try {
-          result = await env.AI.run(MODEL, {
-            messages: [
-              { role: 'system', content: system },
-              ...history,
-              { role: 'user', content: question },
-            ],
-            stream: true,
-            max_tokens: 900,
-            temperature: 0.15,
-            top_p: 0.9,
-          });
-        } catch {
-          activeModel = FALLBACK_MODEL;
-          result = await env.AI.run(FALLBACK_MODEL, {
-            messages: [
-              { role: 'system', content: system },
-              ...history,
-              { role: 'user', content: question },
-            ],
-            stream: true,
-            max_tokens: 900,
-            temperature: 0.15,
-            top_p: 0.9,
-            seed: 17,
-          });
-        }
+            ...history,
+            { role: 'user', content: question },
+          ],
+          stream: true,
+          max_tokens: 700,
+          temperature: 0.15,
+          top_p: 0.9,
+          seed: 17,
+        });
+      } catch (error) {
+        return json(
+          {
+            error: error instanceof Error ? error.message : 'Fast 3B inference failed.',
+            code: 'FAST_MODEL_FAILED',
+          },
+          502,
+        );
       }
 
       if (!(result instanceof ReadableStream)) {
