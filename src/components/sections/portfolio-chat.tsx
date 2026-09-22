@@ -30,9 +30,9 @@ const welcome: Message = {
 - MeeraAI, local AI, robotics, and software systems
 - Education, skills, and engineering background
 - Public portfolio and GitHub information
-- Current technology news and external context when live search is relevant
+- Technical questions and engineering context
 
-Profolio AI is the portfolio's professional knowledge layer. It answers from current first-party sources and live web search when appropriate.`,
+Profolio AI is the portfolio's professional knowledge layer. It answers from first-party portfolio and public GitHub evidence.`,
 };
 
 const prompts = [
@@ -401,7 +401,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           : remoteStatus === 'checking'
             ? 'Checking AI gateway…'
             : remoteStatus === 'ready'
-              ? `Server-side ${MODEL_ID} · web search + streaming`
+              ? `Server-side ${MODEL_ID} · fast live streaming`
               : 'Remote AI is offline'}
       </p>
     </div>
