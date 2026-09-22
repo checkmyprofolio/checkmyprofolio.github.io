@@ -24,15 +24,20 @@ const welcome: Message = {
   role: 'assistant',
   content: `# Profolio AI
 
-## Ask about Vidit's work
+## Discover Vidit's work
+A concise, source-grounded view of **Vidit Shah's** engineering work, projects, and technical background.
 
-- Projects and engineering work
-- MeeraAI, local AI, robotics, and software systems
+### What you can ask
+- Projects and engineering systems
+- MeeraAI, local AI, robotics, and software
 - Education, skills, and engineering background
 - Public portfolio and GitHub information
-- Technical questions and engineering context
+- Technical concepts and engineering questions
 
-Profolio AI is the portfolio's professional knowledge layer. It answers from first-party portfolio and public GitHub evidence.`,
+---
+
+## Built for quick answers
+Profolio AI uses the published portfolio evidence for Vidit-specific facts and keeps responses focused, readable, and professional.`,
 };
 
 const prompts = [
@@ -204,7 +209,7 @@ function AssistantHeader({ sources = [] }: { sources?: PortfolioCitation[] }) {
           Profolio AI
         </span>
         <span className="hidden text-[10px] text-muted-foreground/60 sm:inline">
-          · live stream
+          · server response
         </span>
       </div>
       <div className="ml-auto">
@@ -217,12 +222,11 @@ function AssistantHeader({ sources = [] }: { sources?: PortfolioCitation[] }) {
 function ThinkingPanel({ events, modelLoading }: { events: PortfolioStreamEvent[]; modelLoading: boolean }) {
   const visible = events.length ? events.slice(-5) : [{ event: 'retrieval', data: 'Preparing verified portfolio evidence…' } as PortfolioStreamEvent];
   return <div className="mb-4 overflow-hidden rounded-2xl border border-primary/15 bg-primary/[0.035]">
-    <div className="flex items-center gap-2 border-b border-primary/10 px-3 py-2.5">
+    <div className="flex items-center gap-2 px-3 py-3">
       <div className="relative h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-primary opacity-60" /><span className="relative block h-2 w-2 rounded-full bg-primary" /></div>
-      <span className="text-xs font-semibold text-primary">Thinking</span>
-      <span className="text-[10px] text-muted-foreground">{modelLoading ? 'Generating on the remote model…' : 'Preparing the complete response…'}</span>
+      <span className="text-xs font-semibold text-primary">Profolio AI</span>
+      <span className="text-[10px] text-muted-foreground">{modelLoading ? 'Generating the answer…' : 'Finalizing the response…'}</span>
     </div>
-    <div className="px-3 py-2.5 font-mono text-[10px] leading-4 text-muted-foreground">{visible.map((event, index) => <div key={`${event.event}-${index}`} className="flex items-start gap-2"><span className="shrink-0 text-primary">{event.event}</span><span className="truncate">{event.data}</span></div>)}</div>
     <div className="portfolio-thinking-shimmer h-[2px] w-full" />
     <style jsx>{`@keyframes portfolioShimmer {from{background-position:220% 0}to{background-position:-220% 0}} .portfolio-thinking-shimmer{background:linear-gradient(90deg,transparent,hsl(var(--primary)/.08) 25%,hsl(var(--primary)/.7) 50%,hsl(var(--primary)/.08) 75%,transparent);background-size:220% 100%;animation:portfolioShimmer 1.6s linear infinite}`}</style>
   </div>;
@@ -401,7 +405,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           : remoteStatus === 'checking'
             ? 'Checking AI gateway…'
             : remoteStatus === 'ready'
-              ? `Server-side ${MODEL_ID} · fast live streaming`
+              ? `Server-side ${MODEL_ID} · fast complete response`
               : 'Remote AI is offline'}
       </p>
     </div>
