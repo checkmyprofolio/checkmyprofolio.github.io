@@ -392,48 +392,105 @@ ${clientEvidence}`;
         conversation +
         `\n\nVISITOR QUESTION:\n${question}`;
 
+      const needsWebSearch =
+        /\\b(?:latest|today|current|recent|news|what happened|this week|this month|new release|new releases|launched|launch|announcement|announced|updated|update|2026)\\b/i.test(
+          question,
+        );
+
       let result: unknown;
       let activeModel = MODEL;
-      let webSearch = true;
+      let webSearch = false;
 
-      try {
-        result = await env.AI.run(
-          MODEL,
-          {
-            input,
+      if (needsWebSearch) {
+        try {
+          result = await env.AI.run(
+            MODEL,
+            {
+              input,
+              stream: true,
+              max_output_tokens: 900,
+              temperature: 0.15,
+              top_p: 0.9,
+              tools: [{ type: 'web_search_preview' }],
+            },
+            {
+              gateway: {
+                id: GATEWAY,
+                skipCache: true,
+              },
+            },
+          );
+          webSearch = true;
+        } catch {
+          // Fall back to GPT-5.5 without web search before using the smaller
+          // compatibility model. This keeps normal questions on GPT-5.5 even
+          // when the native web-search tool is temporarily unavailable.
+          try {
+            result = await env.AI.run(MODEL, {
+              messages: [
+                {
+                  role: 'system',
+                  content:
+                    system +
+                    '\n\nLive web search is unavailable for this request. Do not make claims about current events that require live verification.',
+                },
+                ...history,
+                { role: 'user', content: question },
+              ],
+              stream: true,
+              max_tokens: 900,
+              temperature: 0.15,
+              top_p: 0.9,
+            });
+          } catch {
+            activeModel = FALLBACK_MODEL;
+            result = await env.AI.run(FALLBACK_MODEL, {
+              messages: [
+                {
+                  role: 'system',
+                  content:
+                    system +
+                    '\n\nLive web search is unavailable in fallback mode. Do not make claims about current events that require live verification.',
+                },
+                ...history,
+                { role: 'user', content: question },
+              ],
+              stream: true,
+              max_tokens: 900,
+              temperature: 0.15,
+              top_p: 0.9,
+              seed: 17,
+            });
+          }
+        }
+      } else {
+        try {
+          result = await env.AI.run(MODEL, {
+            messages: [
+              { role: 'system', content: system },
+              ...history,
+              { role: 'user', content: question },
+            ],
             stream: true,
-            max_output_tokens: 900,
+            max_tokens: 900,
             temperature: 0.15,
             top_p: 0.9,
-            tools: [{ type: 'web_search_preview' }],
-          },
-          {
-            gateway: {
-              id: GATEWAY,
-              skipCache: true,
-            },
-          },
-        );
-      } catch {
-        activeModel = FALLBACK_MODEL;
-        webSearch = false;
-        result = await env.AI.run(FALLBACK_MODEL, {
-          messages: [
-            {
-              role: 'system',
-              content:
-                system +
-                '\n\nWeb search is unavailable in fallback mode. Do not make current-web claims.',
-            },
-            ...history,
-            { role: 'user', content: question },
-          ],
-          stream: true,
-          max_tokens: 900,
-          temperature: 0.15,
-          top_p: 0.9,
-          seed: 17,
-        });
+          });
+        } catch {
+          activeModel = FALLBACK_MODEL;
+          result = await env.AI.run(FALLBACK_MODEL, {
+            messages: [
+              { role: 'system', content: system },
+              ...history,
+              { role: 'user', content: question },
+            ],
+            stream: true,
+            max_tokens: 900,
+            temperature: 0.15,
+            top_p: 0.9,
+            seed: 17,
+          });
+        }
       }
 
       if (!(result instanceof ReadableStream)) {
