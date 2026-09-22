@@ -232,7 +232,7 @@ function normalizeCitation(value: unknown): PortfolioCitation | null {
         ? nested.url
         : '';
 
-  if (!/^https?:\\/\\//i.test(url)) return null;
+  if (!/^https?:\/\//i.test(url)) return null;
 
   const title =
     type === 'url_citation' && typeof item.title === 'string'
@@ -302,7 +302,7 @@ function citationsFromHeader(header: string | null): PortfolioCitation[] {
         const source = item as Record<string, unknown>;
         if (
           typeof source.url !== 'string' ||
-          !/^https?:\\/\\//i.test(source.url)
+          !/^https?:\/\//i.test(source.url)
         ) {
           return null;
         }
