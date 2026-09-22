@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   streamPortfolioQuestion,
   checkPortfolioAI,
-  MODEL_ID,
+
   type PortfolioCitation,
   type PortfolioStreamEvent,
 } from '@/lib/portfolio-remote-assistant';
@@ -369,7 +369,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
             {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
             {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">Server-side response · complete server response</p>}
             {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">Portfolio-only scope</p>}
-            {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">Remote model response unavailable</p>}
+            {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">AI response unavailable</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
 
           </div>
@@ -401,11 +401,11 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           aria-hidden="true"
         />
         {busy
-          ? 'Server-side 3B generation · preparing response… 🤖'
+          ? 'Generating response… 🤖'
           : remoteStatus === 'checking'
             ? 'Checking AI gateway… 🔎'
             : remoteStatus === 'ready'
-              ? `Server-side ${MODEL_ID} · fast complete response`
+              ? 'Server-side assistant · complete response'
               : 'Remote AI is offline'}
       </p>
     </div>
