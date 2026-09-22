@@ -214,6 +214,119 @@ function parseSseLine(
   }
 }
 
+function normalizeCitation(value: unknown): PortfolioCitation | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const item = value as Record<string, unknown>;
+  const type = typeof item.type === 'string' ? item.type : '';
+
+  const nested =
+    item.url_citation && typeof item.url_citation === 'object'
+      ? (item.url_citation as Record<string, unknown>)
+      : null;
+
+  const url =
+    type === 'url_citation' && typeof item.url === 'string'
+      ? item.url
+      : typeof nested?.url === 'string'
+        ? nested.url
+        : '';
+
+  if (!/^https?:\\/\\//i.test(url)) return null;
+
+  const title =
+    type === 'url_citation' && typeof item.title === 'string'
+      ? item.title
+      : typeof nested?.title === 'string'
+        ? nested.title
+        : (() => {
+            try {
+              return new URL(url).hostname.replace(/^www\\./, '');
+            } catch {
+              return url;
+            }
+          })();
+
+  return {
+    url,
+    title,
+    kind: 'web',
+  };
+}
+
+function collectCitations(
+  value: unknown,
+  output: Map<string, PortfolioCitation>,
+  depth = 0,
+) {
+  if (depth > 8 || value == null) return;
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectCitations(item, output, depth + 1);
+    }
+    return;
+  }
+
+  if (typeof value !== 'object') return;
+
+  const candidate = normalizeCitation(value);
+  if (candidate) {
+    output.set(candidate.url, candidate);
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const [key, child] of Object.entries(record)) {
+    if (
+      key === 'reasoning' ||
+      key === 'reasoning_text' ||
+      key === 'summary'
+    ) {
+      continue;
+    }
+    collectCitations(child, output, depth + 1);
+  }
+}
+
+function citationsFromHeader(header: string | null): PortfolioCitation[] {
+  if (!header) return [];
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(header)) as unknown[];
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null;
+
+        const source = item as Record<string, unknown>;
+        if (
+          typeof source.url !== 'string' ||
+          !/^https?:\\/\\//i.test(source.url)
+        ) {
+          return null;
+        }
+
+        const kind =
+          source.kind === 'portfolio' || source.kind === 'github'
+            ? source.kind
+            : 'web';
+
+        return {
+          url: source.url,
+          title:
+            typeof source.title === 'string'
+              ? source.title
+              : source.url,
+          kind,
+        } satisfies PortfolioCitation;
+      })
+      .filter((item): item is PortfolioCitation => Boolean(item));
+  } catch {
+    return [];
+  }
+}
+
 function extractStreamText(event: ServerSseEvent): string {
   const choice = event.choices?.[0];
 
