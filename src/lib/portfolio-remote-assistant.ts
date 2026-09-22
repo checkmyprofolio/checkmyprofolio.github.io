@@ -214,9 +214,17 @@ function enrichWithEmojis(answer: string) {
 }
 
 function normalize(answer: string) {
-  let text = answer.trim();
+  let text = answer
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '')
+    .replace(/\\t/g, '\t')
+    .trim();
 
+  // Some small models return Markdown wrapped in a quoted JSON-like string.
+  // Decode only escaped formatting sequences; do not evaluate arbitrary data.
   text = text
+    .replace(/^\s*[=]{4,}\s*$/gm, '')
     .replace(/^\s*#{1,6}\s*here[’']s the answer\s*/i, '')
     .replace(/^\s*#{1,6}\s*here is the answer\s*/i, '')
     .replace(/^\s*`{3}(?:markdown|md)?\s*/i, '')
