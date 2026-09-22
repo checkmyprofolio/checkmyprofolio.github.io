@@ -22,16 +22,17 @@ type Message = {
 
 const welcome: Message = {
   role: 'assistant',
-  content: `# Welcome to my portfolio
+  content: `# Profolio AI
 
-## Ask about my work
+## Ask about Vidit's work
 
-- My projects and engineering work
+- Projects and engineering work
 - MeeraAI, local AI, robotics, and software systems
-- My education, skills, and engineering background
-- My public contact details
+- Education, skills, and engineering background
+- Public portfolio and GitHub information
+- Current technology news and external context when live search is relevant
 
-The assistant uses the published portfolio, my public GitHub sources, and live web search when a question benefits from current external information.`,
+Profolio AI is the portfolio's professional knowledge layer. It answers from current first-party sources and live web search when appropriate.`,
 };
 
 const prompts = [
@@ -158,14 +159,14 @@ function CitationPill({ sources = [] }: { sources?: PortfolioCitation[] }) {
     <details className="relative shrink-0">
       <summary
         className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[10px] font-semibold text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10"
-        aria-label={`View ${citations.length} sources used for this response`}
+        aria-label={`View ${citations.length} sources consulted for this response`}
       >
         <ExternalLink className="h-3 w-3" />
         <span>{citations.length} source{citations.length === 1 ? '' : 's'}</span>
       </summary>
       <div className="absolute right-0 top-8 z-30 w-80 max-w-[82vw] rounded-2xl border border-white/60 bg-background/95 p-3 shadow-2xl backdrop-blur-xl dark:border-white/10">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          Sources used
+          Sources consulted
         </p>
         <div className="space-y-1.5">
           {(citations.length ? citations : [{
@@ -200,7 +201,7 @@ function AssistantHeader({ sources = [] }: { sources?: PortfolioCitation[] }) {
       <div className="flex min-w-0 items-center gap-2">
         <Bot className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
         <span className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-          Vidit's portfolio AI
+          Profolio AI
         </span>
         <span className="hidden text-[10px] text-muted-foreground/60 sm:inline">
           · live stream
