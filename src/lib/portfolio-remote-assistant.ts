@@ -70,44 +70,55 @@ function evidence(question: string): string {
       graduation: identity.graduation,
       cgpa: identity.cgpa,
     },
-    foundation: portfolioFacts.foundation,
-    domains: portfolioFacts.domains,
-    skills: portfolioFacts.skills,
-    skillGroups: portfolioFacts.skillGroups,
-    engineeringMethod: portfolioFacts.engineeringMethod,
-    featuredSystems: portfolioFacts.featuredSystems,
-    contact: portfolioFacts.contact,
   };
 
-  if (
-    /meera|model|inference|local ai|browser|llama|gguf|rag|qwen|electron|fastapi/.test(
-      q,
-    )
-  ) {
-    result.meeraAI = portfolioFacts.meeraAI;
+  const wantsProjects = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance)\b/i.test(q);
+  const wantsSkills = /\b(?:skill|skills|stack|technology|technologies|python|react|typescript|javascript|pytorch|tensorflow|opencv|fastapi|electron|llm|rag|lora|qlora|gguf)\b/i.test(q);
+  const wantsEducation = /\b(?:education|degree|college|university|gtu|course|curriculum|cgpa|graduat)\b/i.test(q);
+  const wantsContact = /\b(?:contact|email|linkedin|reach|github)\b/i.test(q);
+  const wantsMeera = /\b(?:meeraai|meera|local ai|model|models|inference|browser|llama|qwen|gguf|rag)\b/i.test(q);
+  const wantsDomains = /\b(?:robotics|automation|vision|control|plc|microcontroller|iot)\b/i.test(q);
+
+  if (wantsEducation) result.education = portfolioFacts.foundation;
+  if (wantsSkills) {
+    result.skills = portfolioFacts.skills;
+    result.skillGroups = portfolioFacts.skillGroups;
+  }
+  if (wantsDomains) result.domains = portfolioFacts.domains;
+  if (wantsContact) result.contact = portfolioFacts.contact;
+
+  if (wantsMeera) {
+    result.meeraAI = {
+      models: portfolioFacts.meeraAI.models,
+      capabilities: portfolioFacts.meeraAI.capabilities,
+      validation: portfolioFacts.meeraAI.validation,
+    };
   }
 
-  const matched = portfolioFacts.projects.filter((p) => {
-    const text =
-      `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')} ${p.buildNotes}`.toLowerCase();
-    return text
-      .split(/\W+/)
-      .some((term) => term.length > 3 && q.includes(term));
-  });
+  if (wantsProjects) {
+    const matched = portfolioFacts.projects.filter((p) => {
+      const haystack =
+        `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')}`.toLowerCase();
+      return haystack.split(/\\W+/).some(
+        (term) => term.length > 3 && q.includes(term),
+      );
+    });
 
-  result.projects = (matched.length ? matched : portfolioFacts.projects).map(
-    ({ title, description, narrative, tags, buildNotes, githubUrl, page }) => ({
-      title,
-      description,
-      narrative,
-      tags,
-      buildNotes,
-      githubUrl: githubUrl === '#' ? undefined : githubUrl,
-      page,
-    }),
-  );
+    const sourceProjects = matched.length ? matched : portfolioFacts.projects;
+    result.projects = sourceProjects.slice(0, 6).map(
+      ({ title, description, narrative, tags, buildNotes, githubUrl, page }) => ({
+        title,
+        description,
+        narrative: matched.length ? narrative : undefined,
+        tags,
+        buildNotes: matched.length ? buildNotes : undefined,
+        githubUrl: githubUrl === '#' ? undefined : githubUrl,
+        page,
+      }),
+    );
+  }
 
-  return JSON.stringify(result).slice(0, 30000);
+  return JSON.stringify(result).slice(0, 6500);
 }
 
 function defaultSources(question: string): PortfolioCitation[] {
