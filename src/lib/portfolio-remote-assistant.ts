@@ -30,18 +30,17 @@ export type RemotePortfolioAnswer = {
   model?: string;
 };
 
-type ServerEvent =
-  | { type: 'token'; data: string }
-  | {
-      type: 'done';
-      answer: string;
-      decision: 'answer' | 'refuse';
-      style: string;
-      model: string;
-      evidenceConstrained: boolean;
-    }
-  | { type: 'error'; error?: string; code?: string }
-  | { type: 'close' };
+type ServerSseEvent = {
+  type?: string;
+  response?: string;
+  result?: { response?: string };
+  choices?: Array<{
+    delta?: { content?: string };
+    text?: string;
+  }>;
+  error?: string;
+  code?: string;
+};
 
 function evidence(question: string): string {
   const q = question.toLowerCase();
@@ -152,24 +151,49 @@ async function fetchWithTimeout(
   }
 }
 
-function parseSseEvent(block: string): ServerEvent | null {
+function parseSseData(block: string): ServerSseEvent | null {
   const data = block
     .split(/\r?\n/)
     .filter((line) => line.startsWith('data:'))
     .map((line) => line.slice(5).trimStart())
-    .join('\n');
+    .join('\n')
+    .trim();
 
-  if (!data || data === '[DONE]') return null;
+  if (!data || data === '[DONE]') {
+    return data === '[DONE]' ? { type: 'done' } : null;
+  }
 
   try {
-    return JSON.parse(data) as ServerEvent;
+    return JSON.parse(data) as ServerSseEvent;
   } catch {
     return {
       type: 'error',
-      error: 'Remote AI returned malformed streaming data.',
+      error: 'Remote AI returned malformed SSE JSON.',
       code: 'INVALID_STREAM_EVENT',
     };
   }
+}
+
+function extractStreamText(event: ServerSseEvent): string {
+  const choice = event.choices?.[0];
+
+  if (typeof choice?.delta?.content === 'string') {
+    return choice.delta.content;
+  }
+
+  if (typeof choice?.text === 'string') {
+    return choice.text;
+  }
+
+  if (typeof event.response === 'string') {
+    return event.response;
+  }
+
+  if (typeof event.result?.response === 'string') {
+    return event.result.response;
+  }
+
+  return '';
 }
 
 export async function checkPortfolioAI(): Promise<boolean> {
@@ -265,47 +289,9 @@ export async function streamPortfolioQuestion(
     const decoder = new TextDecoder();
     let buffer = '';
     let finalAnswer = '';
-    // This value is assigned inside the streamed-event callback, so keep it
-    // widened here; TypeScript cannot reliably track callback mutations.
-    let decision: string = 'answer';
-    let style = 'direct';
-    let serverModel = MODEL_ID;
-    let evidenceConstrained = false;
-    let streamClosed = false;
+    let streamFinished = false;
 
-    const processBlock = (block: string) => {
-      const event = parseSseEvent(block);
-      if (!event) return;
-
-      if (event.type === 'token') {
-        if (!event.data) return;
-        finalAnswer += event.data;
-        emit({ event: 'token', data: event.data });
-        return;
-      }
-
-      if (event.type === 'done') {
-        finalAnswer = event.answer || finalAnswer;
-        decision = event.decision || decision;
-        style = event.style || style;
-        serverModel = event.model || serverModel;
-        evidenceConstrained = event.evidenceConstrained === true;
-        return;
-      }
-
-      if (event.type === 'error') {
-        throw new Error(
-          event.error ||
-            'Remote AI streaming failed before the answer completed.',
-        );
-      }
-
-      if (event.type === 'close') {
-        streamClosed = true;
-      }
-    };
-
-    while (!streamClosed) {
+    while (!streamFinished) {
       const { value, done } = await reader.read();
 
       if (done) break;
@@ -314,15 +300,52 @@ export async function streamPortfolioQuestion(
 
       let separator = buffer.indexOf('\n\n');
       while (separator >= 0) {
-        processBlock(buffer.slice(0, separator));
+        const block = buffer.slice(0, separator);
         buffer = buffer.slice(separator + 2);
+
+        const event = parseSseData(block);
+        if (!event) {
+          separator = buffer.indexOf('\n\n');
+          continue;
+        }
+
+        if (event.type === 'done') {
+          streamFinished = true;
+          break;
+        }
+
+        if (event.type === 'error') {
+          throw new Error(
+            event.error || 'Remote AI streaming failed.',
+          );
+        }
+
+        const text = extractStreamText(event);
+        if (text) {
+          finalAnswer += text;
+          emit({ event: 'token', data: text });
+        }
+
         separator = buffer.indexOf('\n\n');
       }
     }
 
     buffer += decoder.decode();
-    if (buffer.trim()) processBlock(buffer);
+    if (!streamFinished && buffer.trim()) {
+      const event = parseSseData(buffer);
 
+      if (event?.type === 'error') {
+        throw new Error(event.error || 'Remote AI streaming failed.');
+      }
+
+      const text = event ? extractStreamText(event) : '';
+      if (text) {
+        finalAnswer += text;
+        emit({ event: 'token', data: text });
+      }
+    }
+
+    const serverModel = MODEL_ID;
     const answer = normalize(finalAnswer);
 
     if (!answer) {
@@ -331,23 +354,21 @@ export async function streamPortfolioQuestion(
 
     emit({
       event: 'grounding',
-      data: evidenceConstrained
-        ? 'Answer constrained to verified portfolio evidence.'
-        : 'Streaming response completed.',
+      data: 'Answer generated from verified portfolio evidence.',
     });
     emit({
       event: 'complete',
-      data: `Remote stream complete · ${style} · ${serverModel}`,
+      data: `Remote token stream complete · ${serverModel}`,
     });
 
     return {
       answer,
-      mode: decision === 'refuse' ? 'scope' : 'model-generated',
+      mode: 'model-generated',
       sources: [
         ...sourceList(question),
         `${serverModel} · remote GPU`,
       ],
-      model: serverModel,
+      model: MODEL_ID,
     };
   } catch (error) {
     const detail =
