@@ -32,6 +32,43 @@ export type RemotePortfolioAnswer = {
   sources: PortfolioCitation[];
 };
 
+function defaultSources(question: string): PortfolioCitation[] {
+  const q = question.toLowerCase();
+  const sources: PortfolioCitation[] = [
+    {
+      url: 'https://checkmyprofolio.github.io/',
+      title: 'Vidit Shah — published portfolio',
+      kind: 'portfolio',
+    },
+    {
+      url: 'https://github.com/viditshah5656',
+      title: 'Vidit Shah — GitHub profile',
+      kind: 'github',
+    },
+  ];
+
+  for (const p of portfolioFacts.projects) {
+    const text = `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
+    if (text.split(/\W+/).some((term) => term.length > 3 && q.includes(term))) {
+      if (p.page) {
+        sources.push({
+          url: `https://checkmyprofolio.github.io${p.page}`,
+          title: `${p.title} — portfolio`,
+          kind: 'portfolio',
+        });
+      }
+      if (p.githubUrl && p.githubUrl !== '#') {
+        sources.push({
+          url: p.githubUrl,
+          title: `${p.title} — GitHub`,
+          kind: 'github',
+        });
+      }
+    }
+  }
+
+  return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
+}
 function emojiFor(text: string, fallback = '✨') {
   const value = text.toLowerCase();
   if (/\b(?:meeraai|ai|llm|model|inference|rag|qwen|llama)\b/.test(value)) return '🧠';
