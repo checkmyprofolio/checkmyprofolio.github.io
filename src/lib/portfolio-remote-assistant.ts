@@ -6,7 +6,7 @@ export const PORTFOLIO_AI_ENDPOINT =
   process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT ||
   'https://checkmyprofolio-github-io.viditshah5656.workers.dev';
 
-const REQUEST_TIMEOUT_MS = 25000;
+const REQUEST_TIMEOUT_MS = 30000;
 const HEALTH_TIMEOUT_MS = 6000;
 
 export type PortfolioStreamEvent = {
@@ -29,6 +29,19 @@ export type RemotePortfolioAnswer = {
   sources: string[];
   model?: string;
 };
+
+type ServerEvent =
+  | { type: 'token'; data: string }
+  | {
+      type: 'done';
+      answer: string;
+      decision: 'answer' | 'refuse';
+      style: string;
+      model: string;
+      evidenceConstrained: boolean;
+    }
+  | { type: 'error'; error?: string; code?: string }
+  | { type: 'close' };
 
 function evidence(question: string): string {
   const q = question.toLowerCase();
@@ -53,13 +66,20 @@ function evidence(question: string): string {
     contact: portfolioFacts.contact,
   };
 
-  if (/meera|model|inference|local ai|browser|llama|gguf|rag|qwen|electron|fastapi/.test(q)) {
+  if (
+    /meera|model|inference|local ai|browser|llama|gguf|rag|qwen|electron|fastapi/.test(
+      q,
+    )
+  ) {
     result.meeraAI = portfolioFacts.meeraAI;
   }
 
   const matched = portfolioFacts.projects.filter((p) => {
-    const text = `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')} ${p.buildNotes}`.toLowerCase();
-    return text.split(/\W+/).some((term) => term.length > 3 && q.includes(term));
+    const text =
+      `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')} ${p.buildNotes}`.toLowerCase();
+    return text
+      .split(/\W+/)
+      .some((term) => term.length > 3 && q.includes(term));
   });
 
   result.projects = (matched.length ? matched : portfolioFacts.projects).map(
@@ -82,8 +102,13 @@ function sourceList(question: string): string[] {
   const sources = new Set<string>(['Verified portfolio record']);
 
   for (const p of portfolioFacts.projects) {
-    const text = `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
-    if (text.split(/\W+/).some((term) => term.length > 3 && q.includes(term))) {
+    const text =
+      `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
+    if (
+      text
+        .split(/\W+/)
+        .some((term) => term.length > 3 && q.includes(term))
+    ) {
       if (p.page) sources.add(p.page);
       if (p.githubUrl && p.githubUrl !== '#') sources.add(p.githubUrl);
     }
@@ -93,10 +118,16 @@ function sourceList(question: string): string[] {
 }
 
 function normalize(answer: string) {
-  const text = answer.trim();
-  return /^#\s/m.test(text)
-    ? text
-    : `# Here’s the answer 👋\n\n${text}`;
+  let text = answer.trim();
+
+  text = text
+    .replace(/^\s*#{1,6}\s*here[’']s the answer\s*👋\s*/i, '')
+    .replace(/^\s*#{1,6}\s*here is the answer\s*👋\s*/i, '')
+    .replace(/^\s*\`{3}(?:markdown|md)?\s*/i, '')
+    .replace(/\s*\`{3}\s*$/i, '')
+    .trim();
+
+  return text;
 }
 
 async function fetchWithTimeout(
@@ -111,11 +142,33 @@ async function fetchWithTimeout(
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error(`Remote AI request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+      throw new Error(
+        `Remote AI request timed out after ${Math.round(timeoutMs / 1000)} seconds.`,
+      );
     }
     throw error;
   } finally {
     window.clearTimeout(timer);
+  }
+}
+
+function parseSseEvent(block: string): ServerEvent | null {
+  const data = block
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trimStart())
+    .join('\n');
+
+  if (!data || data === '[DONE]') return null;
+
+  try {
+    return JSON.parse(data) as ServerEvent;
+  } catch {
+    return {
+      type: 'error',
+      error: 'Remote AI returned malformed streaming data.',
+      code: 'INVALID_STREAM_EVENT',
+    };
   }
 }
 
@@ -132,9 +185,15 @@ export async function checkPortfolioAI(): Promise<boolean> {
     const data = (await response.json()) as {
       ok?: boolean;
       model?: string;
+      streaming?: boolean;
     };
 
-    return data.ok === true && typeof data.model === 'string' && data.model.length > 0;
+    return (
+      data.ok === true &&
+      data.streaming === true &&
+      typeof data.model === 'string' &&
+      data.model.length > 0
+    );
   } catch {
     return false;
   }
@@ -147,15 +206,15 @@ export async function streamPortfolioQuestion(
 ): Promise<RemotePortfolioAnswer> {
   emit({
     event: 'scope',
-    data: 'Checking the portfolio question against verified evidence.',
+    data: 'Checking the question against verified portfolio evidence.',
   });
   emit({
     event: 'retrieval',
-    data: 'Providing the relevant verified portfolio context.',
+    data: 'Sending only the relevant portfolio context to the remote model.',
   });
   emit({
     event: 'model-loading',
-    data: 'Sending the question to the remote GPU inference server…',
+    data: 'Opening a live server-side token stream…',
   });
 
   try {
@@ -163,7 +222,10 @@ export async function streamPortfolioQuestion(
       PORTFOLIO_AI_ENDPOINT,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify({
           question,
           evidence: evidence(question),
@@ -174,76 +236,135 @@ export async function streamPortfolioQuestion(
       REQUEST_TIMEOUT_MS,
     );
 
-    const rawBody = await response.text();
-
-    let data: {
-      answer?: string;
-      model?: string;
-      decision?: 'answer' | 'refuse';
-      style?: string;
-      evidenceConstrained?: boolean;
-      error?: string;
-      code?: string;
-    } = {};
-
-    if (rawBody) {
-      try {
-        data = JSON.parse(rawBody);
-      } catch {
-        throw new Error(
-          `Remote AI returned invalid JSON (HTTP ${response.status}).`,
-        );
-      }
-    }
-
     if (!response.ok) {
-      throw new Error(
-        data.error
-          ? `Remote AI server returned HTTP ${response.status}: ${data.error}`
-          : `Remote AI server returned HTTP ${response.status}.`,
-      );
+      const rawError = await response.text().catch(() => '');
+      let message = `Remote AI server returned HTTP ${response.status}.`;
+
+      if (rawError) {
+        try {
+          const parsed = JSON.parse(rawError) as { error?: string };
+          if (parsed.error) message += ` ${parsed.error}`;
+        } catch {
+          message += ` ${rawError.slice(0, 180)}`;
+        }
+      }
+
+      throw new Error(message);
     }
 
-    if (!data.answer?.trim()) {
-      throw new Error('Remote GPU model returned an empty response.');
+    if (!response.body) {
+      throw new Error('Remote AI did not provide a streaming response body.');
     }
 
     emit({
       event: 'model-ready',
-      data: `${data.model || MODEL_ID} · server-side inference · decision: ${data.decision || 'answer'} · style: ${data.style || 'direct'}`,
+      data: `${MODEL_ID} · server-side SSE stream connected`,
     });
-    emit({ event: 'token', data: data.answer });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalAnswer = '';
+    let decision: 'answer' | 'refuse' = 'answer';
+    let style = 'direct';
+    let serverModel = MODEL_ID;
+    let evidenceConstrained = false;
+    let streamClosed = false;
+
+    const processBlock = (block: string) => {
+      const event = parseSseEvent(block);
+      if (!event) return;
+
+      if (event.type === 'token') {
+        if (!event.data) return;
+        finalAnswer += event.data;
+        emit({ event: 'token', data: event.data });
+        return;
+      }
+
+      if (event.type === 'done') {
+        finalAnswer = event.answer || finalAnswer;
+        decision = event.decision || decision;
+        style = event.style || style;
+        serverModel = event.model || serverModel;
+        evidenceConstrained = event.evidenceConstrained === true;
+        return;
+      }
+
+      if (event.type === 'error') {
+        throw new Error(
+          event.error ||
+            'Remote AI streaming failed before the answer completed.',
+        );
+      }
+
+      if (event.type === 'close') {
+        streamClosed = true;
+      }
+    };
+
+    while (!streamClosed) {
+      const { value, done } = await reader.read();
+
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      let separator = buffer.indexOf('\n\n');
+      while (separator >= 0) {
+        processBlock(buffer.slice(0, separator));
+        buffer = buffer.slice(separator + 2);
+        separator = buffer.indexOf('\n\n');
+      }
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) processBlock(buffer);
+
+    const answer = normalize(finalAnswer);
+
+    if (!answer) {
+      throw new Error('Remote GPU model returned an empty streaming response.');
+    }
+
     emit({
       event: 'grounding',
-      data: data.evidenceConstrained
+      data: evidenceConstrained
         ? 'Answer constrained to verified portfolio evidence.'
-        : 'Model response received.',
+        : 'Streaming response completed.',
     });
-    emit({ event: 'complete', data: 'Remote model response ready.' });
+    emit({
+      event: 'complete',
+      data: `Remote stream complete · ${style} · ${serverModel}`,
+    });
 
     return {
-      answer: normalize(data.answer),
-      mode: data.decision === 'refuse' ? 'scope' : 'model-generated',
-      sources: [...sourceList(question), `${data.model || MODEL_ID} · remote GPU`],
-      model: data.model || MODEL_ID,
+      answer,
+      mode: decision === 'refuse' ? 'scope' : 'model-generated',
+      sources: [
+        ...sourceList(question),
+        `${serverModel} · remote GPU`,
+      ],
+      model: serverModel,
     };
   } catch (error) {
     const detail =
       error instanceof Error ? error.message : String(error);
 
     emit({ event: 'error', data: detail });
-    emit({ event: 'complete', data: 'Remote generation failed.' });
+    emit({
+      event: 'complete',
+      data: 'Remote generation failed.',
+    });
 
     return {
       answer: `# Remote AI is temporarily unavailable 🔧
 
-## What happened
-The portfolio tried to reach its server-side AI endpoint, but the request could not be completed.
+The portfolio could not complete its live server-side AI stream.
 
-## Server
-- **Model:** ${MODEL_ID}
-- **Inference:** remote GPU
-- **Device WebGPU:** not required`,
+**Server model:** ${MODEL_ID}
+
+**Inference:** remote GPU · browser does not download the model`,
       mode: 'error',
       notice: detail,
       sources: sourceList(question),
