@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowUpRight, Bot, ExternalLink, Github, RotateCcw, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -239,7 +238,6 @@ function ThinkingPanel({ events, modelLoading }: { events: PortfolioStreamEvent[
 }
 
 export function PortfolioChat({ onClose }: { onClose?: () => void }) {
-  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
