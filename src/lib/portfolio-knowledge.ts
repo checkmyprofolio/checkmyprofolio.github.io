@@ -49,7 +49,7 @@ export function portfolioAnswer(question: string) {
  };
 
  const matchesProject = (p: FeaturedSystem) => {
-   const haystack = `${p.id} ${p.title} ${p.description ?? ''} ${p.problem} ${p.approach} ${p.categories.join(' ')} ${p.technologies.join(' ')}`.toLowerCase();
+   const haystack = `${p.id} ${p.title} ${p.problem} ${p.approach} ${p.categories.join(' ')} ${p.technologies.join(' ')}`.toLowerCase();
    if (aliases[p.id]?.some((alias) => q.includes(alias))) return true;
    return haystack.split(/\W+/).some((term) => term.length > 4 && q.includes(term));
  };
