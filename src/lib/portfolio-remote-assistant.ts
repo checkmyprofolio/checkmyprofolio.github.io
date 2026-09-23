@@ -230,13 +230,13 @@ function addRelevantLinks(answer: string, question: string) {
   });
   const projects = matched.length ? matched : portfolioFacts.projects;
   const links = projects
-    .slice(0, matched.length ? 3 : 6)
     .flatMap((p) => {
       const result: string[] = [];
       if (p.page) result.push(`[${p.title} — portfolio](${PORTFOLIO_ORIGIN}${p.page})`);
       if (p.githubUrl && p.githubUrl !== '#') result.push(`[${p.title} — GitHub](${p.githubUrl})`);
       return result;
-    });
+    })
+    .slice(0, matched.length ? 6 : 12);
 
   if (!links.length || /###\s+(?:explore|project links)\b/i.test(answer)) return answer;
   return `${answer}\n\n### Explore the project 🔗\n${links.map((link) => `- ${link}`).join('\n')}`;
