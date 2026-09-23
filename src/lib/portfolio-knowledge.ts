@@ -10,7 +10,7 @@ export const privateProjectContext: Record<string, string> = {
   'ai-cctv': 'Private project context: AI CCTV Surveillance explored computer-vision-based real-time industrial monitoring/analysis, including the Jyoti CNC problem context used during an Intel AI program.',
   'youtube-music-automation': 'Private project context: a Python automation tool with a custom GUI for YouTube Music workflows.',
   'iot-automation': 'Private project context: ESP32-based home/office automation connecting embedded inputs, control logic, and physical outputs.',
-  'gemini-web2api': 'Private project context: Gemini Web2API is an API/integration engineering experiment around AI/web capabilities.',
+  'gemini-web2api': 'Public project context: Gemini Web2API is implemented in the public Infera repository as a unified AI gateway and protocol-translation layer.',
   omniroute: 'Private/ongoing project context: OmniRoute is an active software project. Public technical details are intentionally limited until its implementation is documented for the portfolio.',
 };
 
@@ -49,9 +49,10 @@ export function portfolioAnswer(question: string) {
  };
 
  const matchesProject = (p: FeaturedSystem) => {
-   const haystack = `${p.id} ${p.title} ${p.problem} ${p.approach} ${p.categories.join(' ')} ${p.technologies.join(' ')}`.toLowerCase();
-   if (aliases[p.id]?.some((alias) => q.includes(alias))) return true;
-   return haystack.split(/\W+/).some((term) => term.length > 4 && q.includes(term));
+   const title = p.title.toLowerCase();
+   return aliases[p.id]?.some((alias) => q.includes(alias))
+     || q.includes(p.id.toLowerCase())
+     || q.includes(title);
  };
 
  const specificProject = featuredSystems.find(matchesProject);
