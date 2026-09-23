@@ -370,7 +370,7 @@ export default {
         typeof body.question === 'string' ? body.question.trim() : '';
       const clientEvidence =
         typeof body.evidence === 'string'
-          ? body.evidence.slice(0, 26000)
+          ? body.evidence.slice(0, 50000)
           : '';
       const history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
@@ -502,8 +502,8 @@ ${clientEvidence}`;
         /\b(?:detail|detailed|deep|explain|explanation|architecture|features|all|compare|comparison|how does|why|skills|projects|experience|education|technologies|technology|capabilities)\b/i.test(
           question,
         );
-      const asksForAllProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,50}\b(?:project|projects|work)\b/i.test(question) || /\b(?:project|projects)\b[\s\S]{0,50}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(question);
-      const maxTokens = asksForAllProjects ? 2600 : detailedQuestion ? 1200 : 600;
+      const asksForAllProjects = /\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview|portfolio)\b[\s\S]{0,80}\b(?:project|projects|work|things|built|created|made)\b/i.test(question) || /\b(?:project|projects|work)\b[\s\S]{0,80}\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview|portfolio)\b/i.test(question);
+      const maxTokens = asksForAllProjects ? 5000 : detailedQuestion ? 1800 : 800;
 
       let result: unknown;
       try {
@@ -515,9 +515,8 @@ ${clientEvidence}`;
           ],
           stream: true,
           max_tokens: maxTokens,
-          temperature: 0.3,
-          top_p: 0.9,
-          seed: 17,
+          temperature: 0.35,
+          top_p: 0.92,
         });
       } catch {
         return json(
