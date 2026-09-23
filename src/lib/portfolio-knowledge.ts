@@ -1,7 +1,7 @@
 import { aboutMe, projects, skills } from './data';
 import { identity, foundation, domains, featuredSystems, skillGroups, engineeringMethod, type FeaturedSystem } from './engineering-profile';
 import { meeraModels, meeraCapabilities, meeraValidation } from './meeraai-content';
-import { PORTFOLIO_LINKS, PORTFOLIO_ROUTES } from './portfolio-links';
+import { PORTFOLIO_LINKS, PORTFOLIO_ORIGIN, PORTFOLIO_ROUTES } from './portfolio-links';
 const plain = (value: string) => value.replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
 export const privateProjectContext: Record<string, string> = {
   meeraai: 'Private engineering context: MeeraAI is Vidit\'s local-first desktop AI project and final-year engineering work. The broader development stack has included local GGUF inference, llama.cpp, QLoRA/LoRA experimentation, RAG, agentic tools, Electron/React UI, FastAPI/Python services, SQLite memory, Meera Browser, Playwright automation, document workflows, MCP, voice/TTS and speech recognition experiments. Voice work has included Qwen3-TTS and faster-whisper; multiple voice/performance iterations were developed. Training experiments included 4-bit NF4 QLoRA and mixed instruction/chat datasets such as OpenOrca, ShareGPT, Wikipedia, C4 samples, and UltraChat. This private context is descriptive project history, not a public performance guarantee.',
@@ -143,7 +143,7 @@ export function portfolioAnswer(question: string) {
  }
 
  if (/skill|stack|technology|technologies|technical/.test(q)) {
-   return `# Engineering skills 💻\n\n${skillGroups.map((group) => `**${group.name}:** ${group.skills.join(', ')}`).join('\n\n')}\n\n**Cross-domain foundation:** Robotics, automatic control, machine vision, microcontrollers & PLC, numerical methods, mathematics, and soft computing.`;
+   return `# Engineering skills 💻\n\n${skillGroups.map((group) => `**${group.name}:** ${group.items.map((item) => item[0]).join(', ')}`).join('\n\n')}\n\n**Cross-domain foundation:** Robotics, automatic control, machine vision, microcontrollers & PLC, numerical methods, mathematics, and soft computing.`;
  }
 
  if (/project|work|built|build|portfolio/.test(q)) return portfolioAnswer('tell me about all projects');
