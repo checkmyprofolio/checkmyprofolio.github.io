@@ -415,12 +415,6 @@ export default {
         /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests|project|projects|built|build|meeraai|meera|aarnaai|aarna|gemini|profolio|vision|robotics|automation|website|site|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social|vidit|his|he|about\s+vidit|about\s+him)\b/i.test(
           question,
         );
-
-      const explicitPortfolioSubject =
-        /\b(?:vidit|his|he|about\s+vidit|about\s+him|the\s+portfolio|this\s+portfolio|his\s+projects|his\s+skills|his\s+education)\b/i.test(
-          question,
-        );
-
       const firstParty = firstPartyQuestion
         ? await fetchFirstPartyContext(question)
         : {
