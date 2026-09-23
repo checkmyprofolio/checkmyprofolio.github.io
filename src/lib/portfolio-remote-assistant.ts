@@ -338,21 +338,14 @@ function normalize(answer: string, question = '') {
     break;
   }
 
+  const normalized = cleanLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   let orderedNumber = 0;
-  let previousOrdered = false;
   const renumbered = normalized.split('\n').map((line) => {
     const match = line.match(/^\s*\d+\.\s+(.+)$/);
-    if (match) {
-      orderedNumber += 1;
-      previousOrdered = true;
-      return `${orderedNumber}. ${match[1]}`;
-    }
-    if (previousOrdered && line.trim() !== '') {
-      previousOrdered = false;
-    }
-    return line;
+    if (!match) return line;
+    orderedNumber += 1;
+    return `${orderedNumber}. ${match[1]}`;
   }).join('\n');
-  const normalized = cleanLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
   return addRelevantLinks(enrichWithEmojis(sanitizeAssistantLinks(renumbered)), question);
 }
 
