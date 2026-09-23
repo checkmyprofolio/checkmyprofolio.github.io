@@ -93,20 +93,21 @@ function evidence(question: string): string {
       limitations: p.limitations,
       nextStep: p.nextStep,
       verifiedGitHub: p.visibility === 'public' ? p.source : undefined,
-      verifiedLiveSite: p.liveUrl,
-      portfolioPage: p.page ? `${PORTFOLIO_ORIGIN}${p.page}` : undefined,
+      verifiedLiveSite: p.visibility === 'public' ? p.liveUrl : undefined,
+      portfolioPage: p.page ? PORTFOLIO_ORIGIN + p.page : undefined,
+      privateContext: p.visibility === 'private' ? privateProjectContext[p.id] : undefined,
     }));
     result.projectCatalog = projectCatalog;
-    result.privateProjectContext = privateProjectContext;
     result.projectAnswerRules = {
-      public: 'Only projects explicitly marked public may receive their verifiedGitHub or verifiedLiveSite links.',
-      private: 'Private/personal projects may be described using the supplied privateProjectContext, but never receive guessed repository URLs.',
+      public: 'Only projects explicitly marked public may receive their own verifiedGitHub or verifiedLiveSite links.',
+      private: 'Private/personal projects may use only their own privateContext and never receive guessed repository URLs.',
       exploration: 'Exploration items are clearly labeled as exploration/research direction, not presented as completed public projects.',
-      completeRequest: 'For a complete/all-project request, cover every catalog entry and group by visibility. Do not rank, select, or promote a single project.',
+      completeRequest: 'For a complete/all-project request, cover every catalog entry exactly once and keep each project tied to its own id and context.',
     };
   }
 
-  return JSON.stringify(result).slice(0, asksForAllProjects ? 24000 : 20000);
+  const serialized = JSON.stringify(result);
+  return serialized.length <= 42000 ? serialized : serialized.slice(0, 42000);
 }
 function defaultSources(question: string): PortfolioCitation[] {
   const q = question.toLowerCase();
