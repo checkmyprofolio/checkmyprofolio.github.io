@@ -1,14 +1,24 @@
 import { aboutMe, projects, skills } from './data';
 import { identity, foundation, domains, featuredSystems, skillGroups, engineeringMethod } from './engineering-profile';
 import { meeraModels, meeraCapabilities, meeraValidation } from './meeraai-content';
+import { PORTFOLIO_LINKS, PORTFOLIO_ORIGIN, PORTFOLIO_ROUTES } from './portfolio-links';
 const plain = (value: string) => value.replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
 export const portfolioFacts = {
  ...Object.fromEntries(Object.entries(aboutMe).map(([key,value]) => [key,plain(value)])),
  identity, foundation, domains, featuredSystems, skillGroups, engineeringMethod,
  meeraAI: { models: meeraModels, capabilities: meeraCapabilities, validation: meeraValidation },
  skills,
- contact: { email: 'viditshah5656@gmail.com', github: 'https://github.com/viditshah5656', linkedin: 'https://www.linkedin.com/in/rockstar5656/' },
+ contact: { email: PORTFOLIO_LINKS.emailAddress, github: PORTFOLIO_LINKS.github, linkedin: PORTFOLIO_LINKS.linkedin, orcid: PORTFOLIO_LINKS.orcid, portfolio: PORTFOLIO_LINKS.portfolio },
  projects: projects.map(({title,description,narrative,tags,buildNotes,githubUrl,internalHref}) => ({title,description,narrative,tags,buildNotes,githubUrl: githubUrl === '#' ? undefined : githubUrl, page: internalHref})),
+  navigation: [
+    { label: 'Home', path: PORTFOLIO_ROUTES.home, description: 'Landing page with Vidit\'s engineering introduction.' },
+    { label: 'Overview', path: PORTFOLIO_ROUTES.dashboard, description: 'Engineering dashboard with deeper profile, skills, coursework, evidence, and methods.' },
+    { label: 'Projects', path: PORTFOLIO_ROUTES.projects, description: 'Project index with walkthroughs and source links where public evidence exists.' },
+    { label: 'Contact', path: PORTFOLIO_ROUTES.contact, description: 'Contact form and direct email fallback.' },
+    { label: 'Profile', path: PORTFOLIO_ROUTES.profile, description: 'Profile view for Vidit.' },
+    { label: 'MeeraAI', path: PORTFOLIO_ROUTES.meeraAI, description: 'Detailed MeeraAI and Meera Browser walkthrough.' },
+  ],
+  links: PORTFOLIO_LINKS,
 };
 export function portfolioAnswer(question: string) {
  const q = question.toLowerCase();
