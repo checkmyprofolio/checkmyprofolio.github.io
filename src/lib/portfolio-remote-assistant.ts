@@ -1,4 +1,4 @@
-import { portfolioAnswer, portfolioFacts, privateProjectContext } from './portfolio-knowledge';
+import { portfolioFacts, privateProjectContext } from './portfolio-knowledge';
 import { PORTFOLIO_LINKS, PORTFOLIO_ORIGIN, PORTFOLIO_ROUTES, canonicalizePortfolioUrl, isTrustedPortfolioUrl } from './portfolio-links';
 
 export const CONTEXT_WINDOW = 80000;
@@ -79,26 +79,34 @@ function evidence(question: string): string {
   if (wantsMeera) result.meeraAI = portfolioFacts.meeraAI;
 
   if (wantsProjects) {
-    // For "all projects", send the entire structured catalog so the model
-    // cannot arbitrarily stop after the first two entries.
-    const projectCatalog = portfolioFacts.projects.map((p) => ({
+    const projectCatalog = portfolioFacts.featuredSystems.map((p) => ({
+      id: p.id,
       title: p.title,
-      description: p.description,
-      narrative: p.narrative,
-      tags: p.tags,
-      buildNotes: p.buildNotes,
-      githubUrl: p.githubUrl,
-      page: p.page,
-      portfolioUrl: p.page ? `${PORTFOLIO_ORIGIN}${p.page}` : undefined,
+      visibility: p.visibility,
+      evidenceLevel: p.level,
+      purpose: p.problem,
+      approach: p.approach,
+      architecture: p.architecture,
+      technologies: p.technologies,
+      engineeringDecisions: p.decisions,
+      evidence: p.evidence,
+      limitations: p.limitations,
+      nextStep: p.nextStep,
+      verifiedGitHub: p.visibility === 'public' ? p.source : undefined,
+      verifiedLiveSite: p.liveUrl,
+      portfolioPage: p.page ? `${PORTFOLIO_ORIGIN}${p.page}` : undefined,
     }));
-    result.projects = asksForAllProjects ? projectCatalog : projectCatalog.slice(0, 8);
-    if (asksForAllProjects) result.privateProjectContext = privateProjectContext;
-    result.projectInstructions = asksForAllProjects
-      ? 'The visitor explicitly asked for all projects. Cover every project object supplied above. Do not omit entries merely to shorten the answer. Distinguish source-reviewed, public-project, project-brief, and exploration status.'
-      : 'Answer using the relevant project objects supplied above.';
+    result.projectCatalog = projectCatalog;
+    result.privateProjectContext = privateProjectContext;
+    result.projectAnswerRules = {
+      public: 'Only projects explicitly marked public may receive their verifiedGitHub or verifiedLiveSite links.',
+      private: 'Private/personal projects may be described using the supplied privateProjectContext, but never receive guessed repository URLs.',
+      exploration: 'Exploration items are clearly labeled as exploration/research direction, not presented as completed public projects.',
+      completeRequest: 'For a complete/all-project request, cover every catalog entry and group by visibility. Do not rank, select, or promote a single project.',
+    };
   }
 
-  return JSON.stringify(result).slice(0, asksForAllProjects ? 14000 : 9000);
+  return JSON.stringify(result).slice(0, asksForAllProjects ? 24000 : 20000);
 }
 function defaultSources(question: string): PortfolioCitation[] {
   const q = question.toLowerCase();
@@ -331,7 +339,14 @@ function normalize(answer: string, question = '') {
   }
 
   const normalized = cleanLines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
-  return addRelevantLinks(enrichWithEmojis(sanitizeAssistantLinks(normalized)), question);
+  let orderedNumber = 0;
+  const renumbered = normalized.split('\n').map((line) => {
+    const match = line.match(/^\s*\d+\.\s+(.+)$/);
+    if (!match) return line;
+    orderedNumber += 1;
+    return `${orderedNumber}. ${match[1]}`;
+  }).join('\n');
+  return addRelevantLinks(enrichWithEmojis(sanitizeAssistantLinks(renumbered)), question);
 }
 
 async function fetchWithTimeout(
@@ -477,21 +492,6 @@ export async function streamPortfolioQuestion(
   const fallbackSources = defaultSources(question);
   const trimmed = question.trim();
 
-  const projectQuestion =
-    /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(trimmed);
-
-  if (projectQuestion) {
-    const answer = normalize(portfolioAnswer(trimmed), trimmed);
-    emit({ event: 'scope', data: 'Using the structured project catalog and verified project visibility.' });
-    emit({ event: 'grounding', data: 'Public, private, and exploration projects are kept separate.' });
-    emit({ event: 'complete', data: 'Structured project response complete.' });
-    return {
-      answer,
-      mode: 'scope',
-      sources: defaultSources(trimmed),
-    };
-  }
-
   if (isRuntimePrivacyQuestion(trimmed)) {
     return runtimePrivacyAnswer();
   }
@@ -519,42 +519,6 @@ export async function streamPortfolioQuestion(
     const answer = '### Personal detail\nI don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.';
     emit({ event: 'complete', data: 'Unsupported personal detail declined.' });
     return { answer, mode: 'model-generated', sources: fallbackSources };
-  }
-
-  const specificProjectMention =
-    /\b(?:meeraai|meera|aarnaai|aarna|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini web2api|gemini|web2api|omniroute|binance|futures testnet|profolio)\b/i.test(trimmed);
-  const asksForAllProjects =
-    !specificProjectMention && (
-      /\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview|portfolio)\b[\s\S]{0,80}\b(?:project|projects|work|things|built)\b/i.test(trimmed) ||
-      /\b(?:project|projects|work)\b[\s\S]{0,80}\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview)\b/i.test(trimmed) ||
-      /\b(?:what|which)\b[\s\S]{0,30}\b(?:have|has|did)\b[\s\S]{0,30}\b(?:built|created|made|worked on)\b/i.test(trimmed) ||
-      /\b(?:tell|explain|describe)\b[\s\S]{0,30}\b(?:me|us)\b[\s\S]{0,30}\b(?:about|regarding)\b[\s\S]{0,30}\b(?:his|vidit['’]s|the)\b[\s\S]{0,20}\b(?:project|projects|work)\b/i.test(trimmed)
-    );
-
-  const asksForProfile = !specificProjectMention && /\b(?:who|about|introduce|introduction|tell me about|describe)\b/i.test(trimmed) && !/\b(?:project|projects)\b/i.test(trimmed);
-
-  if (asksForProfile) {
-    const answer = normalize(portfolioAnswer(trimmed), trimmed);
-    emit({ event: 'scope', data: 'Using the structured portfolio profile.' });
-    emit({ event: 'grounding', data: 'Profile response uses the portfolio knowledge base.' });
-    emit({ event: 'complete', data: 'Profile response complete.' });
-    return {
-      answer,
-      mode: 'scope',
-      sources: fallbackSources,
-    };
-  }
-
-  if (asksForAllProjects) {
-    const answer = normalize(portfolioAnswer(trimmed), trimmed);
-    emit({ event: 'scope', data: 'Using the complete public/private project catalog.' });
-    emit({ event: 'grounding', data: 'All recorded projects are grouped by visibility and evidence status.' });
-    emit({ event: 'complete', data: 'Complete project catalog response.' });
-    return {
-      answer,
-      mode: 'scope',
-      sources: fallbackSources,
-    };
   }
 
   emit({ event: 'scope', data: 'Preparing a direct portfolio answer.' });
