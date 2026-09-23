@@ -22,6 +22,43 @@ export const portfolioFacts = {
 };
 export function portfolioAnswer(question: string) {
  const q = question.toLowerCase();
+ const allProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,60}\b(?:project|projects|work|things)\b/i.test(q)
+   || /\b(?:project|projects|work)\b[\s\S]{0,60}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(q)
+   || /\b(?:list|catalog|collection)\b[\s\S]{0,30}\b(?:project|projects)\b/i.test(q);
+
+ if (allProjects) {
+   const publicProjects = featuredSystems.filter((p) => p.visibility === 'public');
+   const privateProjects = featuredSystems.filter((p) => p.visibility === 'private');
+   const explorationProjects = featuredSystems.filter((p) => p.visibility === 'exploration');
+
+   const renderProject = (p: FeaturedSystem) => {
+     const lines = [
+       `### ${p.title}`,
+       `**Purpose:** ${p.problem}`,
+       `**Approach:** ${p.approach}`,
+       `**Architecture:** ${p.architecture}`,
+       p.technologies.length ? `**Technologies:** ${p.technologies.join(', ')}` : '',
+       `**Evidence / status:** ${p.evidence}`,
+       p.limitations ? `**Limitations:** ${p.limitations}` : '',
+     ].filter(Boolean);
+     return lines.join('\n\n');
+   };
+
+   const publicSection = publicProjects.length
+     ? `## Public projects 🌐\n\n${publicProjects.map(renderProject).join('\n\n---\n\n')}\n\n### Public project links 🔗\n${publicProjects.map((p) => p.source ? `- [${p.title} — GitHub](${p.source})` : '').filter(Boolean).join('\n')}`
+     : '## Public projects 🌐\n\nNo public project repository is currently recorded.';
+
+   const privateSection = privateProjects.length
+     ? `## Private / personal projects 🔒\n\nThese are part of Vidit\'s project history but are **not presented as public source repositories** in the portfolio. The assistant should not invent or guess repository URLs.\n\n${privateProjects.map(renderProject).join('\n\n---\n\n')}`
+     : '## Private / personal projects 🔒\n\nNo private projects are currently recorded in the portfolio context.';
+
+   const explorationSection = explorationProjects.length
+     ? `## Current exploration 🧪\n\n${explorationProjects.map(renderProject).join('\n\n---\n\n')}`
+     : '';
+
+   return `# Vidit\'s complete project portfolio 🚀\n\nVidit\'s portfolio contains public software projects, private/personal work, and ongoing engineering exploration. This catalog intentionally does not promote one project over the others.\n\n${publicSection}\n\n---\n\n${privateSection}${explorationSection ? `\n\n---\n\n${explorationSection}` : ''}`;
+ }
+
  if (/meera|browser/.test(q) && /model|tier|lineup|quant/.test(q)) return meeraModels.map(m => `${m.name}: ${m.model}, ${m.parameters}, ${m.quantization} GGUF. Intended role: ${m.role}.${m.studioAlias ? ` Model Studio label: ${m.studioAlias}.` : ''}`).join('\n\n') + '\n\nThese are configured profiles, not seven independently evaluated releases. Model Studio lists different Max quantizations from the backend policy; recorded Qwen runs use IQ4_NL.';
  if (/meera|browser/.test(q) && /test|benchmark|verified|capabil/.test(q)) return meeraValidation.map(v => `${v.title}: ${v.text}`).join('\n\n');
  if (/browser/.test(q)) return meeraCapabilities.slice(2,4).map(c => `${c.title}: ${c.text} Status: ${c.status}.`).join('\n\n');
@@ -32,8 +69,8 @@ export function portfolioAnswer(question: string) {
  if (/contact|email|reach|linkedin/.test(q)) return `You can reach me at ${portfolioFacts.contact.email}, or visit ${portfolioFacts.contact.linkedin}.`;
  if (/cgpa|grade/.test(q)) return `I completed my B.E. in Robotics & Automation in 2026 with a final CGPA of ${identity.cgpa}, at ${identity.institution}, affiliated with ${identity.university}.`;
  if (/course|curriculum|foundation/.test(q)) return foundation.map(f => `${f.area}: ${f.courses.join(', ')}. ${f.meaning}`).join('\n\n');
- if (matched.length) return matched.map(p => { const system = featuredSystems.filter(s => s.level !== 'Current exploration')[p.id - 1]; return `${p.title}: ${p.description} ${p.narrative} Evidence (${system.level}): ${system.evidence} Limitations: ${system.limitations}${system.source ? ' Source: ' + system.source : ''}`; }).join('\n\n');
- if (/project|work|built|build|portfolio/.test(q)) return `My portfolio includes:\n\n${projects.map(p => `${p.title}: ${p.description}`).join('\n\n')}`;
+ if (matched.length) return matched.map(p => { const system = featuredSystems.find(s => s.title === p.title); return `${p.title}: ${p.description} ${p.narrative} Evidence (${system?.level || 'Project brief'}): ${system?.evidence || ''} Limitations: ${system?.limitations || ''}${system?.source ? ' Source: ' + system.source : ''}`; }).join('\n\n');
+ if (/project|work|built|build|portfolio/.test(q)) return portfolioAnswer('tell me about all projects');
  if (/skill|tech|python|stack/.test(q)) return `My listed skills include ${skills.join(', ')}. My projects span local AI inference, software integration, API experimentation, and intelligent-systems exploration.`;
  if (/education|degree|college|study|studying|graduat/.test(q)) return plain(aboutMe.bio);
  if (/hobb|interest|free time/.test(q)) return plain(aboutMe.hobbies);
