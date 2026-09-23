@@ -322,12 +322,8 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         },
       ]);
       setInput('');
-      if (navigation.kind === 'internal') {
-        router.push(navigation.href);
-        onClose?.();
-      } else {
-        window.location.assign(navigation.href);
-      }
+      const destination = new URL(navigation.href, window.location.origin).toString();
+      window.open(destination, '_blank', 'noopener,noreferrer');
       sending.current = false;
       return;
     }
@@ -424,16 +420,10 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
                   const anchor = (event.target as HTMLElement).closest('a');
                   const href = anchor?.getAttribute('href');
                   if (!href) return;
+                  event.preventDefault();
                   try {
                     const url = new URL(href, window.location.href);
-                    const isInternal =
-                      url.origin === window.location.origin ||
-                      url.origin === 'https://checkmyprofolio.github.io';
-                    if (isInternal) {
-                      event.preventDefault();
-                      router.push(`${url.pathname}${url.search}${url.hash}`);
-                      onClose?.();
-                    }
+                    window.open(url.toString(), '_blank', 'noopener,noreferrer');
                   } catch {
                     // Ignore malformed links.
                   }
