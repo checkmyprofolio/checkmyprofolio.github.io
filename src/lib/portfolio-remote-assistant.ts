@@ -37,6 +37,7 @@ export type RemotePortfolioAnswer = {
 function evidence(question: string): string {
   const q = question.toLowerCase();
   const identity = portfolioFacts.identity;
+
   const result: Record<string, unknown> = {
     site: {
       origin: PORTFOLIO_ORIGIN,
@@ -55,14 +56,16 @@ function evidence(question: string): string {
     },
   };
 
-  const wantsProjects = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance)\b/i.test(q);
+  const asksForAllProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,40}\b(?:project|projects|work|things)\b/i.test(q)
+    || /\b(?:project|projects)\b[\s\S]{0,40}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(q);
+  const wantsProjects = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance|gemini|profolio|vision)\b/i.test(q) || asksForAllProjects;
   const wantsSkills = /\b(?:skill|skills|stack|technology|technologies|python|react|typescript|javascript|pytorch|tensorflow|opencv|fastapi|electron|llm|rag|lora|qlora|gguf)\b/i.test(q);
   const wantsEducation = /\b(?:education|degree|college|university|gtu|course|curriculum|cgpa|graduat)\b/i.test(q);
   const wantsContact = /\b(?:contact|email|linkedin|reach|github|orcid|social|link|links)\b/i.test(q);
-  const wantsMeera = /\b(?:meeraai|meera|local ai|model|models|inference|browser|llama|qwen|gguf|rag)\b/i.test(q);
-  const wantsDomains = /\b(?:robotics|automation|vision|control|plc|microcontroller|iot)\b/i.test(q);
-
+  const wantsMeera = /\b(?:meeraai|meera|local ai|model|models|inference|browser|llama|qwen|gguf|rag|mcp|playwright|electron)\b/i.test(q);
+  const wantsDomains = /\b(?:robotics|automation|vision|control|plc|microcontroller|iot|machine learning|software engineering|api)\b/i.test(q);
   const wantsSite = /\b(?:website|site|portfolio|page|pages|navigate|navigation|section|sections|link|links|redirect|homepage|dashboard|profile|contact)\b/i.test(q);
+
   if (wantsSite) result.site = { origin: PORTFOLIO_ORIGIN, navigation: portfolioFacts.navigation, links: portfolioFacts.links };
   if (wantsEducation) result.education = portfolioFacts.foundation;
   if (wantsSkills) {
@@ -71,37 +74,28 @@ function evidence(question: string): string {
   }
   if (wantsDomains) result.domains = portfolioFacts.domains;
   if (wantsContact) result.contact = portfolioFacts.contact;
-
-  if (wantsMeera) {
-    result.meeraAI = {
-      models: portfolioFacts.meeraAI.models,
-      capabilities: portfolioFacts.meeraAI.capabilities,
-      validation: portfolioFacts.meeraAI.validation,
-    };
-  }
+  if (wantsMeera) result.meeraAI = portfolioFacts.meeraAI;
 
   if (wantsProjects) {
-    const matched = portfolioFacts.projects.filter((p) => {
-      const haystack = `${p.title} ${p.description} ${p.narrative} ${p.tags.join(' ')}`.toLowerCase();
-      return haystack.split(/\W+/).some((term) => term.length > 3 && q.includes(term));
-    });
-
-    const sourceProjects = matched.length ? matched : portfolioFacts.projects;
-    result.projects = sourceProjects.slice(0, 6).map(({ title, description, narrative, tags, buildNotes, githubUrl, page }) => ({
-      title,
-      description,
-      narrative: matched.length ? narrative : undefined,
-      tags,
-      buildNotes: matched.length ? buildNotes : undefined,
-      githubUrl: githubUrl === '#' ? undefined : githubUrl,
-      page,
-      portfolioUrl: page
-        ? `https://checkmyprofolio.github.io${page}`
-        : undefined,
+    // For "all projects", send the entire structured catalog so the model
+    // cannot arbitrarily stop after the first two entries.
+    const projectCatalog = portfolioFacts.projects.map((p) => ({
+      title: p.title,
+      description: p.description,
+      narrative: p.narrative,
+      tags: p.tags,
+      buildNotes: p.buildNotes,
+      githubUrl: p.githubUrl,
+      page: p.page,
+      portfolioUrl: p.page ? `${PORTFOLIO_ORIGIN}${p.page}` : undefined,
     }));
+    result.projects = asksForAllProjects ? projectCatalog : projectCatalog.slice(0, 8);
+    result.projectInstructions = asksForAllProjects
+      ? 'The visitor explicitly asked for all projects. Cover every project object supplied above. Do not omit entries merely to shorten the answer. Distinguish source-reviewed, public-project, project-brief, and exploration status.'
+      : 'Answer using the relevant project objects supplied above.';
   }
 
-  return JSON.stringify(result).slice(0, 6500);
+  return JSON.stringify(result).slice(0, asksForAllProjects ? 14000 : 9000);
 }
 function defaultSources(question: string): PortfolioCitation[] {
   const q = question.toLowerCase();
@@ -227,7 +221,7 @@ function enrichWithEmojis(answer: string) {
 
 function addRelevantLinks(answer: string, question: string) {
   const q = question.toLowerCase();
-  const projectIntent = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance|profolio)\b/i.test(q);
+  const projectIntent = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance|gemini|profolio|vision|work)\b/i.test(q);
   if (!projectIntent) return answer;
 
   const matched = portfolioFacts.projects.filter((p) => {
