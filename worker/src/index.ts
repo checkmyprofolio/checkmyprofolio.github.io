@@ -101,7 +101,7 @@ async function fetchFirstPartyContext(
 ): Promise<{ context: string; sources: Source[] }> {
   const q = question.toLowerCase();
   const portfolioQuestion =
-    /\b(?:vidit|his|he|about me|about vidit|bio|biography|education|degree|cgpa|skills?|experience|career|projects?|built|builds|meeraai|meera|github|repository|repo)\b/i.test(
+    /\b(?:vidit|his|he|about me|about vidit|bio|biography|education|degree|cgpa|skills?|experience|career|projects?|built|builds|meeraai|meera|github|repository|repo|website|site|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(
       q,
     );
   const broadProfileQuestion =
