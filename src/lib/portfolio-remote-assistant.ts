@@ -561,6 +561,16 @@ export async function streamPortfolioQuestion(
 
   if (asksForProfile) {
     const answer = normalize(portfolioAnswer(trimmed), trimmed);
+    emit({ event: 'scope', data: 'Using the structured portfolio profile.' });
+    emit({ event: 'grounding', data: 'Profile response uses the portfolio knowledge base.' });
+    emit({ event: 'complete', data: 'Profile response complete.' });
+    return {
+      answer,
+      mode: 'scope',
+      sources: fallbackSources,
+    };
+  }
+
   if (asksForAllProjects) {
     const answer = normalize(portfolioAnswer(trimmed), trimmed);
     emit({ event: 'scope', data: 'Using the complete public/private project catalog.' });
