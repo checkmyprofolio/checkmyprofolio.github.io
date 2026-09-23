@@ -265,8 +265,12 @@ export type PortfolioNavigationTarget = {
 
 export function resolvePortfolioNavigation(question: string): PortfolioNavigationTarget | null {
   const q = question.trim().toLowerCase();
-  const action = /\b(?:open|go|take me|navigate|visit|redirect|show me|bring me|send me|jump to|view)\b/i.test(q);
+  const action = /\b(?:open|go|take me|navigate|visit|redirect|show me|bring me|send me|jump to|view|link|url|address)\b/i.test(q);
   if (!action) return null;
+
+  const asksForLink =
+    /\b(?:give|send|show|share|provide|what(?:'s| is)|where(?:'s| is))\b[\s\S]{0,40}\b(?:the\s+)?(?:link|url|address)\b/i.test(q)
+    || /\b(?:link|url|address)\b[\s\S]{0,40}\b(?:of|for|to)\b/i.test(q);
 
   if (/\b(?:linkedin|linked\s*in)\b/.test(q)) {
     return { label: 'LinkedIn', href: PORTFOLIO_LINKS.linkedin, kind: 'external' };
@@ -283,6 +287,23 @@ export function resolvePortfolioNavigation(question: string): PortfolioNavigatio
   if (/\b(?:email|mail)\b/.test(q)) {
     return { label: 'email', href: PORTFOLIO_LINKS.email, kind: 'external' };
   }
+
+  const project = portfolioFacts.featuredSystems.find((item) => {
+    const haystack = (item.id + ' ' + item.title).toLowerCase();
+    return q.includes(item.id.toLowerCase()) || q.includes(item.title.toLowerCase()) ||
+      item.title.toLowerCase().split(/\s+|\//).some((token) => token.length >= 5 && q.includes(token));
+  });
+
+  if (project && asksForLink) {
+    if (project.page) {
+      return { label: project.title + ' portfolio page', href: PORTFOLIO_ORIGIN + project.page, kind: 'internal' };
+    }
+    if (project.visibility === 'public' && project.source) {
+      return { label: project.title + ' on GitHub', href: project.source, kind: 'external' };
+    }
+    return { label: 'Projects', href: PORTFOLIO_ROUTES.projects, kind: 'internal' };
+  }
+
   if (/\b(?:meeraai|meera\s+browser|desktop\s+assistant)\b/.test(q)) {
     return { label: 'MeeraAI', href: PORTFOLIO_ROUTES.meeraAI, kind: 'internal' };
   }
