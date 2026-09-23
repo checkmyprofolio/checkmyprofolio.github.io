@@ -44,8 +44,8 @@ Profolio AI uses the published portfolio evidence for Vidit-specific facts and k
 const prompts = [
   '🧠 What is MeeraAI?',
   '👋 Tell me about Vidit',
-  '🚀 What have I built?',
-  '💻 What are my skills?',
+  '🚀 Explore the projects',
+  '💻 View technical skills',
   '🧭 Show me the website sections',
   '🔗 Open my GitHub',
   '🔗 Open my LinkedIn',
