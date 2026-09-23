@@ -405,7 +405,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     <div className="flex items-center justify-between border-b border-slate-500/10 bg-white/20 px-5 py-4 dark:border-white/10 dark:bg-white/[0.025]">
       <div className="flex min-w-0 items-center gap-3">
         <div className="rounded-2xl border border-primary/20 bg-primary/15 p-2.5 text-primary"><Bot className="h-6 w-6" /></div>
-        <div className="min-w-0"><h2 className="font-headline font-bold">Ask my portfolio</h2><p className="truncate text-xs text-muted-foreground">Vidit Shah · Projects &amp; engineering</p></div>
+        <div className="min-w-0"><h2 className="font-headline font-bold">Ask my portfolio</h2><p className="truncate text-xs text-muted-foreground">Vidit Shah · Projects, pages &amp; engineering</p></div>
       </div>
       <div className="flex shrink-0">
         <Button variant="ghost" size="icon" disabled={busy} aria-label="Start a new conversation" onClick={() => { setMessages([welcome]); setError(''); setInput(''); setStreamEvents([]); }}><RotateCcw className="h-4 w-4" /></Button>
@@ -460,7 +460,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
       <form onSubmit={(event) => { event.preventDefault(); send(input); }} className="flex items-end gap-2">
         <label htmlFor="portfolio-question" className="sr-only">Your question</label>
-        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
+        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project, page, or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
