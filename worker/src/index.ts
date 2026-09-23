@@ -63,6 +63,14 @@ function truncate(value: string, max: number) {
   return value.length > max ? value.slice(0, max) + '\n[truncated]' : value;
 }
 
+function compactJson(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '';
+  }
+}
+
 async function fetchSource(
   source: Source,
   maxChars = 7000,
