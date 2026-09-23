@@ -284,7 +284,7 @@ ${item.text}`,
     .join('\n\n---\n\n');
 
   return {
-    context: truncate(context, 14000),
+    context: truncate(context, 18000),
     sources: [...unique.values()].map((item) => item.source),
   };
 }
@@ -372,7 +372,7 @@ export default {
         typeof body.question === 'string' ? body.question.trim() : '';
       const clientEvidence =
         typeof body.evidence === 'string'
-          ? body.evidence.slice(0, 8000)
+          ? body.evidence.slice(0, 26000)
           : '';
       const history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
@@ -446,6 +446,12 @@ RESPONSE STYLE
 - Use a concise H1 for substantial factual answers, not for simple greetings or one-line replies.
 - Use H2/H3 sections to organize detailed answers naturally.
 - For project questions, cover purpose, approach/architecture, technologies, evidence/validation, limitations, and relevant next steps when those facts are available.
+- When the visitor asks for all projects, present the complete project catalog from the supplied evidence. Use exactly these conceptual groups: **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
+- Never promote one project as the main or notable project when the visitor asks for the portfolio/project collection. Give projects comparable space according to the evidence available.
+- A project marked private must never be given a guessed, inferred, or fabricated GitHub repository URL. Say that its source is private/not publicly linked when relevant.
+- Public links belong only to the project or identity they actually document. Do not mix a public project's repository URL into a biography, education, or unrelated project section unless the visitor asked for that link.
+- Do not create a generic 'Links to Public Evidence' section for every answer. Only include links relevant to the visitor's question, grouped under clear labels such as 'Public project links' or 'Profile links'.
+- If the visitor asks for project links broadly, list all verified public project links together and explicitly state that private projects do not have public repository links in the portfolio.
 - For skills or education questions, group the information into clear categories and explain what the evidence means.
 - Use bullets or numbered lists for multiple technical points.
 - Use 3-6 relevant emojis naturally across substantive answers; headings and major bullet groups should usually include an emoji.
@@ -469,8 +475,7 @@ Visitor: "What's Vidit's birth date?"
 Profolio AI: "I don't have Vidit's birth date in the published portfolio or GitHub sources, so I don't want to guess."
 
 Visitor: "Tell me about all his projects."
-Profolio AI: "## Vidit's Projects 🚀
-Vidit has worked across local AI, robotics, software systems, and applied experimentation..." followed by only evidence-supported details.
+Profolio AI: "## Vidit's Projects 🚀" followed by **Public projects**, **Private/personal projects**, and any **Current exploration**, covering every project supplied in the portfolio evidence without singling one out.
 
 LIVE GITHUB EVIDENCE:
 ${firstParty.context}
@@ -485,7 +490,7 @@ ${clientEvidence}`;
           question,
         );
       const asksForAllProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,50}\b(?:project|projects|work)\b/i.test(question) || /\b(?:project|projects)\b[\s\S]{0,50}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(question);
-      const maxTokens = asksForAllProjects ? 1500 : detailedQuestion ? 900 : 520;
+      const maxTokens = asksForAllProjects ? 1800 : detailedQuestion ? 900 : 520;
 
       let result: unknown;
       try {
