@@ -118,9 +118,11 @@ async function fetchFirstPartyContext(
     );
   const siteQuestion = /\b(?:website|site|portfolio|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(q);
   const projectQuestion =
-    /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|gemini|profolio|vision|github|repository|repo)\b/i.test(
+    /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|gemini|profolio|vision|airlearn|cctv|surveillance|youtube|music|automation|iot|esp32|omniroute|aerosynth|photogrammetry|drone|reconstruction)\b/i.test(
       q,
     );
+  const explicitGithubQuestion =
+    /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests)\b/i.test(q);
 
   // Keep non-portfolio/general questions fast: they do not need to wait on
   // first-party HTTP retrieval unless the visitor is asking about Vidit.
@@ -169,9 +171,9 @@ async function fetchFirstPartyContext(
     });
   }
 
-  if (projectQuestion) {
+  if (explicitGithubQuestion) {
     baseSources.push({
-      url: 'https://api.github.com/users/viditshah5656/repos?per_page=20&sort=updated',
+      url: 'https://api.github.com/users/viditshah5656/repos?per_page=100&sort=updated',
       title: 'Vidit Shah — GitHub repositories',
       kind: 'github',
     });
@@ -445,14 +447,22 @@ RESPONSE STYLE
 - Use Markdown when it improves readability.
 - Use a concise H1 for substantial factual answers, not for simple greetings or one-line replies.
 - Use H2/H3 sections to organize detailed answers naturally.
-- For project questions, cover purpose, approach/architecture, technologies, evidence/validation, limitations, and relevant next steps when those facts are available.
+- For project questions, synthesize a natural explanation from the structured project records. Do not merely echo database field names or copy source wording.
+- For a specific project question, stay focused on that project unless the visitor explicitly asks for comparisons or the complete portfolio.
+- For the complete portfolio, cover every project supplied in the authoritative catalog exactly once and group them into **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
+- Treat the structured `visibility` field as authoritative. Never infer public/private status from a similarly named GitHub repository or from live repository search.
+- For project questions, cover purpose, approach/architecture, technologies, engineering decisions, evidence/validation, limitations, and relevant next steps when those facts are available.
 - The structured project records are authoritative for **visibility**. A project marked PUBLIC may have a verified source/live link; a project marked PRIVATE / PERSONAL must never receive a guessed GitHub URL.
 - Never turn the personal GitHub profile, portfolio repository, or another project's repository into a link for a different project.
 - When discussing the complete project portfolio, reproduce every project supplied by the evidence and group them under Public projects, Private / personal projects, and Current exploration. Use stable unique numbering such as 01, 02, 03 instead of repeating "1.".
 - For complete project requests, do not select a "main", "notable", or "best" project. Give the catalog balanced coverage based on available evidence.
-- When a public project record supplies a verified repository, use that exact URL. For Gemini Web2API, the verified public repository is **Infera**. For AeroSynth 3D / Single-Pass Drone Video Reconstruction, the verified public repository is **single_pass_3D**. The portfolio site/source is separate from the project repository.
+- Use project links only from the authoritative structured catalog.
+- A public project's `verifiedGitHub` or `verifiedLiveSite` belongs only to that project.
+- Never invent a repository slug. Never give a private project a guessed GitHub URL.
+- Current verified public project repositories include **Infera** for Gemini Web2API, **single_pass_3D** for AeroSynth 3D / Single-Pass Drone Video Reconstruction, the Binance Futures Testnet CLI repository, and the Profolio repository.
 - When the visitor asks for all projects, present the complete project catalog from the supplied evidence. Use exactly these conceptual groups: **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
-- Never promote one project as the main or notable project when the visitor asks for the portfolio/project collection. Give projects comparable space according to the evidence available.
+- Never promote, spotlight, call "main", call "notable", rank, or recommend one project when the visitor asks for the portfolio/project collection. Give each project comparable explanation based on available evidence.
+- Number projects uniquely across the whole answer (01, 02, 03 …); do not restart numbering inside each category.
 - A project marked private must never be given a guessed, inferred, or fabricated GitHub repository URL. Say that its source is private/not publicly linked when relevant.
 - Public links belong only to the project or identity they actually document. Do not mix a public project's repository URL into a biography, education, or unrelated project section unless the visitor asked for that link.
 - Do not create a generic 'Links to Public Evidence' section for every answer. Only include links relevant to the visitor's question, grouped under clear labels such as 'Public project links' or 'Profile links'.
@@ -462,7 +472,9 @@ RESPONSE STYLE
 - Use 3-6 relevant emojis naturally across substantive answers; headings and major bullet groups should usually include an emoji.
 - For simple greetings, use 1-2 emojis.
 - For technical answers, use emojis to visually distinguish major ideas without putting one in every sentence.
-- When a verified portfolio or GitHub URL is provided in the evidence, include it as a Markdown link with a descriptive label. For project answers, include a small "Explore the project 🔗" section with the relevant portfolio/GitHub links.
+- When a verified portfolio or GitHub URL is provided in the structured evidence, include it as a Markdown link with a descriptive label.
+- For broad project answers, put verified public links in a **Public project links 🔗** section only. Do not mix profile links or unrelated project links into that section.
+- For a private project, do not output a GitHub link unless its structured record explicitly contains a verified public URL.
 - Do not invent URLs. Never claim a link exists unless it is supplied in the evidence.
 - Avoid repetitive phrases such as "Here is the answer", "Certainly", or "As an AI".
 - Never output JSON.
@@ -495,7 +507,7 @@ ${clientEvidence}`;
           question,
         );
       const asksForAllProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,50}\b(?:project|projects|work)\b/i.test(question) || /\b(?:project|projects)\b[\s\S]{0,50}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(question);
-      const maxTokens = asksForAllProjects ? 1800 : detailedQuestion ? 900 : 520;
+      const maxTokens = asksForAllProjects ? 2600 : detailedQuestion ? 1200 : 600;
 
       let result: unknown;
       try {
@@ -507,7 +519,7 @@ ${clientEvidence}`;
           ],
           stream: true,
           max_tokens: maxTokens,
-          temperature: 0.2,
+          temperature: 0.3,
           top_p: 0.9,
           seed: 17,
         });
