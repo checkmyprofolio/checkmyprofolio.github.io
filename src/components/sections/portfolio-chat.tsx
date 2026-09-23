@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowUpRight, Bot, ExternalLink, Github, RotateCcw, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   streamPortfolioQuestion,
   checkPortfolioAI,
+  resolvePortfolioNavigation,
 
   type PortfolioCitation,
   type PortfolioStreamEvent,
@@ -45,6 +47,10 @@ const prompts = [
   '👋 Tell me about Vidit',
   '🚀 What have I built?',
   '💻 What are my skills?',
+  '🧭 Show me the website sections',
+  '🔗 Open my GitHub',
+  '🔗 Open my LinkedIn',
+  '📫 Open Contact',
 ];
 
 function InlineMarkdown({ text }: { text: string }) {
@@ -233,6 +239,7 @@ function ThinkingPanel({ events, modelLoading }: { events: PortfolioStreamEvent[
 }
 
 export function PortfolioChat({ onClose }: { onClose?: () => void }) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -298,6 +305,33 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
     const question = text.trim();
     if (!question || sending.current || question.length > 2000) return;
     sending.current = true;
+
+    const navigation = resolvePortfolioNavigation(question);
+    if (navigation) {
+      setMessages((current) => [
+        ...current,
+        { role: 'user', content: question },
+        {
+          role: 'assistant',
+          content:
+            navigation.kind === 'internal'
+              ? `### Navigation 🧭\nOpening **${navigation.label}**…`
+              : `### Navigation 🔗\nOpening **${navigation.label}**…`,
+          mode: 'scope',
+          sources: [],
+        },
+      ]);
+      setInput('');
+      if (navigation.kind === 'internal') {
+        router.push(navigation.href);
+        onClose?.();
+      } else {
+        window.location.assign(navigation.href);
+      }
+      sending.current = false;
+      return;
+    }
+
     const history = [...messages, { role: 'user' as const, content: question }];
     setMessages(history);
     setInput('');
@@ -384,7 +418,30 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
         {messages.map((message, index) => <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
           <div className={`max-w-[92%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm border border-white/50 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/[0.055]'}`}>
             {message.role === 'assistant' && <AssistantHeader sources={message.sources} />}
-            {message.role === 'assistant' ? <RichMarkdown content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
+            {message.role === 'assistant' ? (
+              <div
+                onClick={(event) => {
+                  const anchor = (event.target as HTMLElement).closest('a');
+                  const href = anchor?.getAttribute('href');
+                  if (!href) return;
+                  try {
+                    const url = new URL(href, window.location.href);
+                    const isInternal =
+                      url.origin === window.location.origin ||
+                      url.origin === 'https://checkmyprofolio.github.io';
+                    if (isInternal) {
+                      event.preventDefault();
+                      router.push(`${url.pathname}${url.search}${url.hash}`);
+                      onClose?.();
+                    }
+                  } catch {
+                    // Ignore malformed links.
+                  }
+                }}
+              >
+                <RichMarkdown content={message.content} />
+              </div>
+            ) : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
             {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">Server-side response · complete server response</p>}
             {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">Portfolio-only scope</p>}
             {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">AI response unavailable</p>}
