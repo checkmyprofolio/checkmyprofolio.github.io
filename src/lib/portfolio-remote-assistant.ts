@@ -61,7 +61,7 @@ function evidence(question: string): string {
     || /\b(?:list|catalog|collection|overview|portfolio)\b[\s\S]{0,30}\b(?:project|projects|work|things)\b/i.test(q)
     || /\b(?:what|which)\b[\s\S]{0,20}\b(?:have|has)\b[\s\S]{0,20}\b(?:built|created|made|worked on)\b/i.test(q);
   const wantsProjects = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance|gemini|profolio|vision)\b/i.test(q) || asksForAllProjects;
-  const wantsSkills = /\b(?:skill|skills|stack|technology|technologies|python|react|typescript|javascript|pytorch|tensorflow|opencv|fastapi|electron|llm|rag|lora|qlora|gguf)\b/i.test(q);
+  const wantsSkills = /\b(?:skill|skills|stack|technology|technologies|tech\s*stack|programming|programming\s+language|programming\s+languages|coding|developer|development|python|react|typescript|javascript|pytorch|tensorflow|opencv|fastapi|electron|llm|rag|lora|qlora|gguf)\b/i.test(q);
   const wantsEducation = /\b(?:education|degree|college|university|gtu|course|curriculum|cgpa|graduat)\b/i.test(q);
   const wantsContact = /\b(?:contact|email|linkedin|reach|github|orcid|social|link|links)\b/i.test(q);
   const wantsMeera = /\b(?:meeraai|meera|local ai|model|models|inference|browser|llama|qwen|gguf|rag|mcp|playwright|electron)\b/i.test(q);
@@ -73,6 +73,14 @@ function evidence(question: string): string {
   if (wantsSkills) {
     result.skills = portfolioFacts.skills;
     result.skillGroups = portfolioFacts.skillGroups;
+    result.programmingLanguageEvidence = {
+      explicitlyListed: ['Python', 'JavaScript / TypeScript'],
+      evidence: [
+        'Python is explicitly listed in the Programming skill group and used by the public Binance Futures Testnet CLI and other documented projects.',
+        'JavaScript / TypeScript is explicitly listed in the Programming skill group and used by the public Profolio workspace.',
+      ],
+      rule: 'Do not add C, C++, Java, Rust, Go, Kotlin, Swift, or any other programming language unless it is explicitly present in the supplied portfolio evidence.'
+    };
   }
   if (wantsDomains) result.domains = portfolioFacts.domains;
   if (wantsContact) result.contact = portfolioFacts.contact;
