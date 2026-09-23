@@ -34,6 +34,7 @@ export type Project = {
   tags: string[];
   metrics: ProjectMetric[];
   buildNotes: string[];
+  visibility?: 'public' | 'private' | 'exploration';
   liveUrl?: string;
   githubUrl?: string;
   internalHref?: string;
@@ -57,6 +58,7 @@ export const projects: Project[] = featuredSystems.filter(system => system.level
   tags: system.technologies.length ? system.technologies : system.categories,
   metrics: system.id === 'meeraai' ? [{value:'7',label:'curated GGUF profiles'},{value:'22',label:'regression checks passed'},{value:'2',label:'browser layers'}] : [],
   buildNotes: [`Decision: ${system.decisions}`, `Evidence: ${system.evidence}`, `Limitations: ${system.limitations}`, `Proposed next step: ${system.nextStep}`],
+  visibility: system.visibility,
   githubUrl: system.source,
   internalHref: system.page,
   ctaLabel: system.page ? 'View walkthrough' : undefined,
