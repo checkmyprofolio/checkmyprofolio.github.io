@@ -9,7 +9,7 @@ export const portfolioFacts = {
  meeraAI: { models: meeraModels, capabilities: meeraCapabilities, validation: meeraValidation },
  skills,
  contact: { email: PORTFOLIO_LINKS.emailAddress, github: PORTFOLIO_LINKS.github, linkedin: PORTFOLIO_LINKS.linkedin, orcid: PORTFOLIO_LINKS.orcid, portfolio: PORTFOLIO_LINKS.portfolio },
- projects: projects.map(({title,description,narrative,tags,buildNotes,githubUrl,internalHref}) => ({title,description,narrative,tags,buildNotes,githubUrl: githubUrl === '#' ? undefined : githubUrl, page: internalHref})),
+ projects: projects.map(({title,description,narrative,tags,buildNotes,githubUrl,internalHref,visibility}) => ({title,description,narrative,tags,buildNotes,visibility,githubUrl: githubUrl === '#' ? undefined : githubUrl, page: internalHref})),
   navigation: [
     { label: 'Home', path: PORTFOLIO_ROUTES.home, description: 'Landing page with Vidit\'s engineering introduction.' },
     { label: 'Overview', path: PORTFOLIO_ROUTES.dashboard, description: 'Engineering dashboard with deeper profile, skills, coursework, evidence, and methods.' },
