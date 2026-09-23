@@ -223,17 +223,29 @@ function sanitizeAssistantLinks(text: string) {
     return isTrustedPortfolioUrl(canonical) ? canonical : '';
   };
 
+  // Protect valid Markdown links while sanitizing bare URLs. The previous
+  // two-pass replacement could remove the destination URL from a valid link
+  // and leave behind broken text such as "[label](" or "[]".
+  const linkPlaceholders: string[] = [];
   text = text.replace(
     /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-    (_match, label: string, url: string) => {
+    (match, label: string, url: string) => {
       const canonical = rewrite(url);
-      return canonical ? `[${label}](${canonical})` : label;
+      if (!canonical) return label;
+      const token = `__PORTFOLIO_LINK_${linkPlaceholders.length}__`;
+      linkPlaceholders.push(`[${label}](${canonical})`);
+      return token;
     },
   );
 
-  return text.replace(
+  text = text.replace(
     /https?:\/\/[^\s)]+/g,
     (url) => rewrite(url),
+  );
+
+  return text.replace(
+    /__PORTFOLIO_LINK_(\d+)__/g,
+    (_match, index: string) => linkPlaceholders[Number(index)] || '',
   );
 }
 
