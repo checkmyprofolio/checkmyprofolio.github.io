@@ -117,10 +117,6 @@ async function fetchFirstPartyContext(
       q,
     );
   const siteQuestion = /\b(?:website|site|portfolio|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(q);
-  const projectQuestion =
-    /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|gemini|profolio|vision|airlearn|cctv|surveillance|youtube|music|automation|iot|esp32|omniroute|aerosynth|photogrammetry|drone|reconstruction)\b/i.test(
-      q,
-    );
   const explicitGithubQuestion =
     /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests)\b/i.test(q);
 
@@ -450,14 +446,14 @@ RESPONSE STYLE
 - For project questions, synthesize a natural explanation from the structured project records. Do not merely echo database field names or copy source wording.
 - For a specific project question, stay focused on that project unless the visitor explicitly asks for comparisons or the complete portfolio.
 - For the complete portfolio, cover every project supplied in the authoritative catalog exactly once and group them into **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
-- Treat the structured `visibility` field as authoritative. Never infer public/private status from a similarly named GitHub repository or from live repository search.
+- Treat the structured 'visibility' field as authoritative. Never infer public/private status from a similarly named GitHub repository or from live repository search.
 - For project questions, cover purpose, approach/architecture, technologies, engineering decisions, evidence/validation, limitations, and relevant next steps when those facts are available.
 - The structured project records are authoritative for **visibility**. A project marked PUBLIC may have a verified source/live link; a project marked PRIVATE / PERSONAL must never receive a guessed GitHub URL.
 - Never turn the personal GitHub profile, portfolio repository, or another project's repository into a link for a different project.
 - When discussing the complete project portfolio, reproduce every project supplied by the evidence and group them under Public projects, Private / personal projects, and Current exploration. Use stable unique numbering such as 01, 02, 03 instead of repeating "1.".
 - For complete project requests, do not select a "main", "notable", or "best" project. Give the catalog balanced coverage based on available evidence.
 - Use project links only from the authoritative structured catalog.
-- A public project's `verifiedGitHub` or `verifiedLiveSite` belongs only to that project.
+- A public project's 'verifiedGitHub' or 'verifiedLiveSite' belongs only to that project.
 - Never invent a repository slug. Never give a private project a guessed GitHub URL.
 - Current verified public project repositories include **Infera** for Gemini Web2API, **single_pass_3D** for AeroSynth 3D / Single-Pass Drone Video Reconstruction, the Binance Futures Testnet CLI repository, and the Profolio repository.
 - When the visitor asks for all projects, present the complete project catalog from the supplied evidence. Use exactly these conceptual groups: **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
