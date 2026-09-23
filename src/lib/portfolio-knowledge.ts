@@ -3,6 +3,17 @@ import { identity, foundation, domains, featuredSystems, skillGroups, engineerin
 import { meeraModels, meeraCapabilities, meeraValidation } from './meeraai-content';
 import { PORTFOLIO_LINKS, PORTFOLIO_ROUTES } from './portfolio-links';
 const plain = (value: string) => value.replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+export const privateProjectContext: Record<string, string> = {
+  meeraai: 'Private engineering context: MeeraAI is Vidit\'s local-first desktop AI project and final-year engineering work. The broader development stack has included local GGUF inference, llama.cpp, QLoRA/LoRA experimentation, RAG, agentic tools, Electron/React UI, FastAPI/Python services, SQLite memory, Meera Browser, Playwright automation, document workflows, MCP, voice/TTS and speech recognition experiments. Voice work has included Qwen3-TTS and faster-whisper; multiple voice/performance iterations were developed. Training experiments included 4-bit NF4 QLoRA and mixed instruction/chat datasets such as OpenOrca, ShareGPT, Wikipedia, C4 samples, and UltraChat. This private context is descriptive project history, not a public performance guarantee.',
+  aarnaai: 'Private engineering context: AarnaAI has included a Streamlit interface, ticker input, selectable periods from 1mo through 5y, LSTM experimentation, RandomForest classification, SMA9, RSI, MACD, Bollinger Bands, yfinance/IndianAPI.in data access, pandas/numpy/scikit-learn/pandas_ta/TensorFlow/Keras/plotly, and development variants AarnaAI-v1.0, AarnaAI-v2.0, and AarnaAI-Files. No API key or secret is part of the portfolio knowledge.',
+  airlearn: 'Private project context: AIRLearn/AirLearn is an AI/Robotics learning platform concept with an AI chatbot and a Next.js/Firebase web stack.',
+  'ai-cctv': 'Private project context: AI CCTV Surveillance explored computer-vision-based real-time industrial monitoring/analysis, including the Jyoti CNC problem context used during an Intel AI program.',
+  'youtube-music-automation': 'Private project context: a Python automation tool with a custom GUI for YouTube Music workflows.',
+  'iot-automation': 'Private project context: ESP32-based home/office automation connecting embedded inputs, control logic, and physical outputs.',
+  'gemini-web2api': 'Private project context: Gemini Web2API is an API/integration engineering experiment around AI/web capabilities.',
+  omniroute: 'Private/ongoing project context: OmniRoute is an active software project. Public technical details are intentionally limited until its implementation is documented for the portfolio.',
+};
+
 export const portfolioFacts = {
  ...Object.fromEntries(Object.entries(aboutMe).map(([key,value]) => [key,plain(value)])),
  identity, foundation, domains, featuredSystems, skillGroups, engineeringMethod,
@@ -24,7 +35,8 @@ export function portfolioAnswer(question: string) {
  const q = question.toLowerCase();
  const allProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,60}\b(?:project|projects|work|things)\b/i.test(q)
    || /\b(?:project|projects|work)\b[\s\S]{0,60}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(q)
-   || /\b(?:list|catalog|collection)\b[\s\S]{0,30}\b(?:project|projects)\b/i.test(q);
+   || /\b(?:list|catalog|collection|overview|portfolio)\b[\s\S]{0,30}\b(?:project|projects|work|things)\b/i.test(q)
+   || /\b(?:what|which)\b[\s\S]{0,20}\b(?:have|has)\b[\s\S]{0,20}\b(?:built|created|made|worked on)\b/i.test(q);
 
  if (allProjects) {
    const publicProjects = featuredSystems.filter((p) => p.visibility === 'public');
