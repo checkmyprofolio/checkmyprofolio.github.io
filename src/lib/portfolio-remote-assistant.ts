@@ -254,7 +254,7 @@ function sanitizeAssistantLinks(text: string) {
   };
 
   text = text.replace(
-    /\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+)\\)/g,
+    /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
     (_match, label: string, url: string) => {
       const canonical = rewrite(url);
       return canonical ? `[${label}](${canonical})` : label;
@@ -262,7 +262,7 @@ function sanitizeAssistantLinks(text: string) {
   );
 
   return text.replace(
-    /https?:\\/\\/[^\\s)]+/g,
+    /https?:\/\/[^\s)]+/g,
     (url) => rewrite(url),
   );
 }
@@ -275,40 +275,40 @@ export type PortfolioNavigationTarget = {
 
 export function resolvePortfolioNavigation(question: string): PortfolioNavigationTarget | null {
   const q = question.trim().toLowerCase();
-  const action = /\\b(?:open|go|take me|navigate|visit|redirect|show me|bring me|send me|jump to|view)\\b/i.test(q);
+  const action = /\b(?:open|go|take me|navigate|visit|redirect|show me|bring me|send me|jump to|view)\b/i.test(q);
   if (!action) return null;
 
-  if (/\\b(?:linkedin|linked\\s*in)\\b/.test(q)) {
+  if (/\b(?:linkedin|linked\s*in)\b/.test(q)) {
     return { label: 'LinkedIn', href: PORTFOLIO_LINKS.linkedin, kind: 'external' };
   }
-  if (/\\b(?:github|git hub|repositories|repository|source code)\\b/.test(q)) {
-    if (/\\b(?:binance|futures\\s+testnet|trading\\s+bot)\\b/.test(q)) {
+  if (/\b(?:github|git hub|repositories|repository|source code)\b/.test(q)) {
+    if (/\b(?:binance|futures\s+testnet|trading\s+bot)\b/.test(q)) {
       return { label: 'Binance Futures Testnet CLI on GitHub', href: PORTFOLIO_LINKS.binanceCli, kind: 'external' };
     }
     return { label: 'GitHub', href: PORTFOLIO_LINKS.github, kind: 'external' };
   }
-  if (/\\b(?:orcid)\\b/.test(q)) {
+  if (/\b(?:orcid)\b/.test(q)) {
     return { label: 'ORCID', href: PORTFOLIO_LINKS.orcid, kind: 'external' };
   }
-  if (/\\b(?:email|mail)\\b/.test(q)) {
+  if (/\b(?:email|mail)\b/.test(q)) {
     return { label: 'email', href: PORTFOLIO_LINKS.email, kind: 'external' };
   }
-  if (/\\b(?:meeraai|meera\\s+browser|desktop\\s+assistant)\\b/.test(q)) {
+  if (/\b(?:meeraai|meera\s+browser|desktop\s+assistant)\b/.test(q)) {
     return { label: 'MeeraAI', href: PORTFOLIO_ROUTES.meeraAI, kind: 'internal' };
   }
-  if (/\\b(?:project|projects|work|portfolio\\s+work)\\b/.test(q)) {
+  if (/\b(?:project|projects|work|portfolio\s+work)\b/.test(q)) {
     return { label: 'Projects', href: PORTFOLIO_ROUTES.projects, kind: 'internal' };
   }
-  if (/\\b(?:dashboard|overview|engineering\\s+overview|skills\\s+dashboard)\\b/.test(q)) {
+  if (/\b(?:dashboard|overview|engineering\s+overview|skills\s+dashboard)\b/.test(q)) {
     return { label: 'Overview', href: PORTFOLIO_ROUTES.dashboard, kind: 'internal' };
   }
-  if (/\\b(?:contact|reach\\s+out|message)\\b/.test(q)) {
+  if (/\b(?:contact|reach\s+out|message)\b/.test(q)) {
     return { label: 'Contact', href: PORTFOLIO_ROUTES.contact, kind: 'internal' };
   }
-  if (/\\b(?:profile|about\\s+vidit|about\\s+me|bio)\\b/.test(q)) {
+  if (/\b(?:profile|about\s+vidit|about\s+me|bio)\b/.test(q)) {
     return { label: 'Profile', href: PORTFOLIO_ROUTES.profile, kind: 'internal' };
   }
-  if (/\\b(?:home|homepage|landing\\s+page|start)\\b/.test(q)) {
+  if (/\b(?:home|homepage|landing\s+page|start)\b/.test(q)) {
     return { label: 'Home', href: PORTFOLIO_ROUTES.home, kind: 'internal' };
   }
 
