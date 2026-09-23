@@ -1,7 +1,8 @@
 
 'use client';
 
-import { Github, Linkedin, Instagram, Mail } from 'lucide-react';
+import { Github, Linkedin, Mail } from 'lucide-react';
+import { PORTFOLIO_LINKS } from '@/lib/portfolio-links';
 import {
   Tooltip,
   TooltipContent,
@@ -12,10 +13,9 @@ import { Button } from '../ui/button';
 import { motion } from 'framer-motion';
 
 const socialLinks = [
-  { icon: Github, href: 'https://github.com/viditshah5656', 'aria-label': 'GitHub' },
-  { icon: Linkedin, href: 'https://www.linkedin.com/in/rockstar5656/', 'aria-label': 'LinkedIn' },
-  { icon: Instagram, href: 'https://www.instagram.com/_mr__shah__007_/', 'aria-label': 'Instagram' },
-  { icon: Mail, href: 'mailto:viditshah5656@gmail.com', 'aria-label': 'Email' },
+  { icon: Github, href: PORTFOLIO_LINKS.github, 'aria-label': 'GitHub' },
+  { icon: Linkedin, href: PORTFOLIO_LINKS.linkedin, 'aria-label': 'LinkedIn' },
+  { icon: Mail, href: PORTFOLIO_LINKS.email, 'aria-label': 'Email' },
 ];
 
 const sidebarVariants = {
