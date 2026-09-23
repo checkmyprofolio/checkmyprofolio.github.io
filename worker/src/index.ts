@@ -108,6 +108,7 @@ async function fetchFirstPartyContext(
     /\b(?:vidit|about me|about vidit|bio|biography|education|degree|cgpa|skills?|experience|career)\b/i.test(
       q,
     );
+  const siteQuestion = /\b(?:website|site|portfolio|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(q);
   const projectQuestion =
     /\b(?:project|projects|built|build|meeraai|meera|github|repository|repo)\b/i.test(
       q,
@@ -132,10 +133,25 @@ async function fetchFirstPartyContext(
     },
   ];
 
+  if (siteQuestion) {
+    baseSources.push(
+      { url: 'https://checkmyprofolio.github.io/projects', title: 'Portfolio — Projects', kind: 'portfolio' },
+      { url: 'https://checkmyprofolio.github.io/dashboard', title: 'Portfolio — Engineering Overview', kind: 'portfolio' },
+      { url: 'https://checkmyprofolio.github.io/profile', title: 'Portfolio — Profile', kind: 'portfolio' },
+      { url: 'https://checkmyprofolio.github.io/contact', title: 'Portfolio — Contact', kind: 'portfolio' },
+      { url: 'https://checkmyprofolio.github.io/meeraai', title: 'Portfolio — MeeraAI', kind: 'portfolio' },
+    );
+  }
+
   if (broadProfileQuestion) {
     baseSources.unshift({
       url: 'https://checkmyprofolio.github.io/',
       title: 'Vidit Shah — published portfolio',
+      kind: 'portfolio',
+    });
+    baseSources.push({
+      url: 'https://www.linkedin.com/in/viditshah5656/',
+      title: 'Vidit Shah — LinkedIn profile',
       kind: 'portfolio',
     });
     baseSources.push({
@@ -467,6 +483,7 @@ ${clientEvidence}`;
         result = await env.AI.run(MODEL, {
           messages: [
             { role: 'system', content: system },
+            ...safeHistory(body.history),
             { role: 'user', content: question },
           ],
           stream: true,
