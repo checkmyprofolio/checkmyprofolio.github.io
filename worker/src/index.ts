@@ -118,7 +118,7 @@ async function fetchFirstPartyContext(
     );
   const siteQuestion = /\b(?:website|site|portfolio|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(q);
   const projectQuestion =
-    /\b(?:project|projects|built|build|meeraai|meera|github|repository|repo)\b/i.test(
+    /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|gemini|profolio|vision|github|repository|repo)\b/i.test(
       q,
     );
 
@@ -395,12 +395,12 @@ export default {
         });
       }
 
-      const liveGithubQuestion =
-        /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests)\b/i.test(
+      const firstPartyQuestion =
+        /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests|project|projects|built|build|meeraai|meera|aarnaai|aarna|gemini|profolio|vision|robotics|automation|website|site|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(
           question,
         );
 
-      const firstParty = liveGithubQuestion
+      const firstParty = firstPartyQuestion
         ? await fetchFirstPartyContext(question)
         : {
             context: '',
@@ -456,7 +456,7 @@ RESPONSE STYLE
 - Avoid repetitive phrases such as "Here is the answer", "Certainly", or "As an AI".
 - Never output JSON.
 - Never end with a question, "let me know", or an invitation to continue.
-- Keep simple answers concise, but for substantive questions provide roughly 250-450 words when the available evidence supports it.
+- Keep simple answers concise. For a request for all projects, provide a complete catalog of every project in the supplied evidence; do not stop after the first two. For substantive project questions, provide enough detail to cover purpose, architecture/approach, technologies, evidence/status, limitations, and source links where available.
 
 EXAMPLES
 Visitor: "Hi"
@@ -484,7 +484,8 @@ ${clientEvidence}`;
         /\b(?:detail|detailed|deep|explain|explanation|architecture|features|all|compare|comparison|how does|why|skills|projects|experience|education|technologies|technology|capabilities)\b/i.test(
           question,
         );
-      const maxTokens = detailedQuestion ? 680 : 420;
+      const asksForAllProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,50}\b(?:project|projects|work)\b/i.test(question) || /\b(?:project|projects)\b[\s\S]{0,50}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(question);
+      const maxTokens = asksForAllProjects ? 1500 : detailedQuestion ? 900 : 520;
 
       let result: unknown;
       try {
