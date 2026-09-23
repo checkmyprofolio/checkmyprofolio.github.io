@@ -117,8 +117,26 @@ async function fetchFirstPartyContext(
       q,
     );
   const siteQuestion = /\b(?:website|site|portfolio|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(q);
+  const projectQuestion = /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|aarna|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(q);
   const explicitGithubQuestion =
     /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests)\b/i.test(q);
+  const navigationQuestion =
+    /\b(?:website|site|navigation|navigate|dashboard|profile|contact|linkedin|orcid|social)\b/i.test(q);
+
+  // Ordinary project questions should use the structured catalog sent by the
+  // portfolio client. Do not dilute it with a second copy of raw profile data.
+  if (projectQuestion && !explicitGithubQuestion && !navigationQuestion) {
+    return {
+      context: '',
+      sources: [
+        {
+          url: 'https://checkmyprofolio.github.io/projects',
+          title: 'Portfolio — Projects',
+          kind: 'portfolio',
+        },
+      ],
+    };
+  }
 
   // Keep non-portfolio/general questions fast: they do not need to wait on
   // first-party HTTP retrieval unless the visitor is asking about Vidit.
@@ -445,20 +463,17 @@ RESPONSE STYLE
 - Use H2/H3 sections to organize detailed answers naturally.
 - For project questions, synthesize a natural explanation from the structured project records. Do not merely echo database field names or copy source wording.
 - For a specific project question, stay focused on that project unless the visitor explicitly asks for comparisons or the complete portfolio.
-- For the complete portfolio, cover every project supplied in the authoritative catalog exactly once and group them into **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
+- For the complete portfolio, cover every project supplied in the authoritative catalog exactly once. Treat each catalog **id** as a unique identity: never merge, duplicate, rename, or move facts between project ids.
+- Group complete answers into exactly **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
 - Treat the structured 'visibility' field as authoritative. Never infer public/private status from a similarly named GitHub repository or from live repository search.
 - For project questions, cover purpose, approach/architecture, technologies, engineering decisions, evidence/validation, limitations, and relevant next steps when those facts are available.
-- The structured project records are authoritative for **visibility**. A project marked PUBLIC may have a verified source/live link; a project marked PRIVATE / PERSONAL must never receive a guessed GitHub URL.
-- Never turn the personal GitHub profile, portfolio repository, or another project's repository into a link for a different project.
-- When discussing the complete project portfolio, reproduce every project supplied by the evidence and group them under Public projects, Private / personal projects, and Current exploration. Use stable unique numbering such as 01, 02, 03 instead of repeating "1.".
-- For complete project requests, do not select a "main", "notable", or "best" project. Give the catalog balanced coverage based on available evidence.
-- Use project links only from the authoritative structured catalog.
-- A public project's 'verifiedGitHub' or 'verifiedLiveSite' belongs only to that project.
-- Never invent a repository slug. Never give a private project a guessed GitHub URL.
-- Current verified public project repositories include **Infera** for Gemini Web2API, **single_pass_3D** for AeroSynth 3D / Single-Pass Drone Video Reconstruction, the Binance Futures Testnet CLI repository, and the Profolio repository.
-- When the visitor asks for all projects, present the complete project catalog from the supplied evidence. Use exactly these conceptual groups: **Public projects**, **Private/personal projects**, and **Current exploration** when applicable.
-- Never promote, spotlight, call "main", call "notable", rank, or recommend one project when the visitor asks for the portfolio/project collection. Give each project comparable explanation based on available evidence.
-- Number projects uniquely across the whole answer (01, 02, 03 …); do not restart numbering inside each category.
+- Use only the project object that matches the project being described. A fact, context note, architecture, technology, repository, or link from one project must never be transferred to another project.
+- The optional privateContext field belongs only to the project object that contains it. Never reuse it for another project.
+- A project marked PUBLIC may receive only its own verified source/live link. A project marked PRIVATE / PERSONAL must never receive a guessed GitHub URL.
+- For complete project requests, do not select, spotlight, rank, or recommend one project. Give every catalog entry comparable space based only on the supplied evidence.
+- Numbering is presentation-only: use unique 01, 02, 03 … across the entire answer and never restart numbering under a new category.
+- Do not invent repository slugs or links. Never turn the personal GitHub profile, portfolio repository, or another project's repository into a link for a different project.
+- For the complete portfolio, write one compact natural paragraph (about 60–100 words) per project, rather than repeating database field labels.
 - A project marked private must never be given a guessed, inferred, or fabricated GitHub repository URL. Say that its source is private/not publicly linked when relevant.
 - Public links belong only to the project or identity they actually document. Do not mix a public project's repository URL into a biography, education, or unrelated project section unless the visitor asked for that link.
 - Do not create a generic 'Links to Public Evidence' section for every answer. Only include links relevant to the visitor's question, grouped under clear labels such as 'Public project links' or 'Profile links'.
@@ -475,7 +490,9 @@ RESPONSE STYLE
 - Avoid repetitive phrases such as "Here is the answer", "Certainly", or "As an AI".
 - Never output JSON.
 - Never end with a question, "let me know", or an invitation to continue.
-- Keep simple answers concise. For a request for the complete project portfolio, finish the entire response in one generation. Never stop halfway through a project or category. Cover every project supplied in the authoritative catalog, with comparable detail.
+- Keep simple answers concise. For a request for the complete project portfolio, finish the entire response in one generation. Never stop halfway through a project or category.
+- Complete-project answers should stay compact enough to finish: about 60–100 words of prose per project, followed by verified links only where the record supplies them.
+- Do not expose internal evidence labels such as project object, privateContext, catalog id, or database field names in the visitor-facing answer.
 
 EXAMPLES
 Visitor: "Hi"
