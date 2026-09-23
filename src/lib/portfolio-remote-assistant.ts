@@ -111,23 +111,24 @@ function evidence(question: string): string {
 function defaultSources(question: string): PortfolioCitation[] {
   const q = question.toLowerCase();
   const projectIntent = /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(q);
-  if (projectIntent) {
-    const sources: PortfolioCitation[] = [{ url: `${PORTFOLIO_ORIGIN}/projects`, title: 'Portfolio — Projects', kind: 'portfolio' }];
-    for (const p of portfolioFacts.featuredSystems) {
-      const haystack = `${p.id} ${p.title} ${p.problem} ${p.categories.join(' ')} ${p.technologies.join(' ')}`.toLowerCase();
-      const matched = q.split(/\W+/).some((token) => token.length > 3 && haystack.includes(token));
-      if (!matched && q.length > 0) continue;
-      if (p.visibility === 'public' && p.source) sources.push({ url: p.source, title: `${p.title} — GitHub`, kind: 'github' });
-      if (p.liveUrl) sources.push({ url: p.liveUrl, title: `${p.title} — live site`, kind: 'portfolio' });
-      if (p.page) sources.push({ url: `${PORTFOLIO_ORIGIN}${p.page}`, title: `${p.title} — portfolio walkthrough`, kind: 'portfolio' });
-    }
-    return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
+  if (!projectIntent) {
+    return [
+      { url: PORTFOLIO_ORIGIN, title: 'Vidit Shah — published portfolio', kind: 'portfolio' },
+      { url: PORTFOLIO_LINKS.github, title: 'Vidit Shah — GitHub profile', kind: 'github' },
+      { url: PORTFOLIO_LINKS.linkedin, title: 'Vidit Shah — LinkedIn', kind: 'web' },
+    ];
   }
-  return [
-    { url: PORTFOLIO_ORIGIN, title: 'Vidit Shah — published portfolio', kind: 'portfolio' },
-    { url: PORTFOLIO_LINKS.github, title: 'Vidit Shah — GitHub profile', kind: 'github' },
-    { url: PORTFOLIO_LINKS.linkedin, title: 'Vidit Shah — LinkedIn', kind: 'web' },
-  ];
+
+  const sources: PortfolioCitation[] = [{ url: `${PORTFOLIO_ORIGIN}/projects`, title: 'Portfolio — Projects', kind: 'portfolio' }];
+  for (const p of portfolioFacts.featuredSystems) {
+    const exact = [p.id, p.title].map((v) => v.toLowerCase());
+    const matched = exact.some((v) => q.includes(v));
+    if (!matched) continue;
+    if (p.visibility === 'public' && p.source) sources.push({ url: p.source, title: `${p.title} — GitHub`, kind: 'github' });
+    if (p.liveUrl) sources.push({ url: p.liveUrl, title: `${p.title} — live site`, kind: 'portfolio' });
+    if (p.page) sources.push({ url: `${PORTFOLIO_ORIGIN}${p.page}`, title: `${p.title} — portfolio walkthrough`, kind: 'portfolio' });
+  }
+  return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
 }
 function emojiFor(text: string, fallback = '✨') {
   const value = text.toLowerCase();
