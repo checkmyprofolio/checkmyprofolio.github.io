@@ -36,21 +36,6 @@ export type RemotePortfolioAnswer = {
 
 function evidence(question: string): string {
   const q = question.toLowerCase();
-  const projectQuestion =
-    /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(trimmed);
-
-  if (projectQuestion) {
-    const answer = normalize(portfolioAnswer(trimmed), trimmed);
-    emit({ event: 'scope', data: 'Using the structured project catalog and verified project visibility.' });
-    emit({ event: 'grounding', data: 'Public, private, and exploration projects are kept separate.' });
-    emit({ event: 'complete', data: 'Structured project response complete.' });
-    return {
-      answer,
-      mode: 'scope',
-      sources: defaultSources(trimmed),
-    };
-  }
-
   const identity = portfolioFacts.identity;
 
   const result: Record<string, unknown> = {
@@ -491,6 +476,21 @@ export async function streamPortfolioQuestion(
 ): Promise<RemotePortfolioAnswer> {
   const fallbackSources = defaultSources(question);
   const trimmed = question.trim();
+
+  const projectQuestion =
+    /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(trimmed);
+
+  if (projectQuestion) {
+    const answer = normalize(portfolioAnswer(trimmed), trimmed);
+    emit({ event: 'scope', data: 'Using the structured project catalog and verified project visibility.' });
+    emit({ event: 'grounding', data: 'Public, private, and exploration projects are kept separate.' });
+    emit({ event: 'complete', data: 'Structured project response complete.' });
+    return {
+      answer,
+      mode: 'scope',
+      sources: defaultSources(trimmed),
+    };
+  }
 
   if (isRuntimePrivacyQuestion(trimmed)) {
     return runtimePrivacyAnswer();
