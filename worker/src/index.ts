@@ -475,7 +475,7 @@ RESPONSE STYLE
 - Avoid repetitive phrases such as "Here is the answer", "Certainly", or "As an AI".
 - Never output JSON.
 - Never end with a question, "let me know", or an invitation to continue.
-- Keep simple answers concise. For a request for all projects, provide a complete catalog of every project in the supplied evidence; do not stop after the first two. For substantive project questions, provide enough detail to cover purpose, architecture/approach, technologies, evidence/status, limitations, and source links where available.
+- Keep simple answers concise. For a request for the complete project portfolio, finish the entire response in one generation. Never stop halfway through a project or category. Cover every project supplied in the authoritative catalog, with comparable detail.
 
 EXAMPLES
 Visitor: "Hi"
@@ -490,20 +490,20 @@ Profolio AI: "I don't have Vidit's birth date in the published portfolio or GitH
 Visitor: "Tell me about all his projects."
 Profolio AI: "## Vidit's Projects 🚀" followed by **Public projects**, **Private/personal projects**, and any **Current exploration**, covering every project supplied in the portfolio evidence without singling one out.
 
-LIVE GITHUB EVIDENCE:
-${firstParty.context}
+AUTHORITATIVE PORTFOLIO CATALOG:
+${clientEvidence}
 
-PUBLISHED PORTFOLIO EVIDENCE:
-${clientEvidence}`;
+LIVE GITHUB EVIDENCE:
+${firstParty.context}`;
 
       // Production inference stays on the fast 3B model, but the browser
       // receives one complete response. This avoids choppy token rendering.
       const detailedQuestion =
-        /\b(?:detail|detailed|deep|explain|explanation|architecture|features|all|compare|comparison|how does|why|skills|projects|experience|education|technologies|technology|capabilities)\b/i.test(
+        /\b(?:detail|detailed|deep|explain|explanation|architecture|features|all|compare|comparison|how does|why|skills|projects|experience|education|technologies|technology|capabilities|portfolio)\b/i.test(
           question,
         );
       const asksForAllProjects = /\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview|portfolio)\b[\s\S]{0,80}\b(?:project|projects|work|things|built|created|made)\b/i.test(question) || /\b(?:project|projects|work)\b[\s\S]{0,80}\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview|portfolio)\b/i.test(question);
-      const maxTokens = asksForAllProjects ? 5000 : detailedQuestion ? 1800 : 800;
+      const maxTokens = asksForAllProjects ? 7000 : detailedQuestion ? 1800 : 800;
 
       let result: unknown;
       try {
@@ -515,8 +515,8 @@ ${clientEvidence}`;
           ],
           stream: true,
           max_tokens: maxTokens,
-          temperature: 0.35,
-          top_p: 0.92,
+          temperature: 0.4,
+          top_p: 0.9,
         });
       } catch {
         return json(
