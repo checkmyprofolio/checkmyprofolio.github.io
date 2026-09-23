@@ -1,5 +1,5 @@
 import { aboutMe, projects, skills } from './data';
-import { identity, foundation, domains, featuredSystems, skillGroups, engineeringMethod } from './engineering-profile';
+import { identity, foundation, domains, featuredSystems, skillGroups, engineeringMethod, type FeaturedSystem } from './engineering-profile';
 import { meeraModels, meeraCapabilities, meeraValidation } from './meeraai-content';
 import { PORTFOLIO_LINKS, PORTFOLIO_ROUTES } from './portfolio-links';
 const plain = (value: string) => value.replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
