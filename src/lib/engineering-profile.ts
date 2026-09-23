@@ -6,7 +6,7 @@ export const identity = {
  statement: 'I work on robotics, AI applications, computer vision, automation, and software.',
  degree: 'B.E. in Robotics & Automation', university: 'Gujarat Technological University (GTU)',
  institution: 'Government Engineering College, Sector-28, Gandhinagar', intake: 2022, graduation: 2026, cgpa: '8.45 / 10',
- github: 'https://github.com/viditshah5656', orcid: 'https://orcid.org/0009-0009-0658-6157', email: 'viditshah5656@gmail.com',
+ github: 'https://github.com/viditshah5656', linkedin: 'https://www.linkedin.com/in/viditshah5656/', orcid: 'https://orcid.org/0009-0009-0658-6157', email: 'viditshah5656@gmail.com',
 };
 export const foundation = [
  {area:'Programming', courses:['Programming for Problem Solving'], meaning:'This course introduced me to programming and breaking a problem into steps that can be implemented in code.'},
