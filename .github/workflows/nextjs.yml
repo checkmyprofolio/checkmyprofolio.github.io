@@ -2,6 +2,8 @@ name: Deploy Next.js site to Pages
 on:
   push:
     branches: ["master"]
+  pull_request:
+    branches: ["master"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,11 +36,14 @@ jobs:
         run: npm run build
       - name: Typecheck Worker
         run: npx tsc -p worker/tsconfig.json --noEmit
+      - name: Validate generated output
+        run: test -d ./out && test -f ./out/index.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
