@@ -34,10 +34,23 @@ export type FeaturedSystem = {
  limitations:string;
  nextStep:string;
  source?:string;
+ liveUrl?:string;
  page?:string;
 };
 
 export const featuredSystems: FeaturedSystem[] = [
+ {id:'aerosynth3d',title:'AeroSynth 3D / Single-Pass Drone Video Reconstruction',categories:['Computer vision','3D reconstruction','Photogrammetry','Robotics'],level:'Public project',visibility:'public',
+  problem:'Turn an aerial drone video into a metric 3D reconstruction through a single continuous flight pass.',
+  approach:'Validate video metadata, extract useful frames, reject poor-quality frames, select keyframes using motion/GPS cues, optionally mask dynamic objects, perform real Structure-from-Motion, densify with native Multi-View Stereo, reconstruct and texture the mesh, then analyze and georeference when real telemetry is available.',
+  architecture:'Drone video + optional SRT/GPX/CSV -> frame extraction -> quality filtering -> keyframes -> optional YOLO dynamic masking -> COLMAP/SIFT -> GLOMAP or pycolmap -> InterfaceCOLMAP -> DensifyPointCloud -> ReconstructMesh -> TextureMesh -> analysis/georeference -> validated artifacts.',
+  technologies:['Python','FastAPI','OpenCV','COLMAP','GLOMAP','pycolmap','OpenMVS','SIFT','YOLO','WebGL','3D reconstruction'],
+  decisions:'Use real SfM/MVS backends rather than synthetic depth; treat missing telemetry as local metric coordinates instead of inventing GPS; require declared output artifacts to exist and be non-empty before a run is reported successful.',
+  evidence:'Public repository README documents the full reconstruction pipeline, API surface, Codespaces workflow, native OpenMVS build, artifact-validation gate, and a distinction between internal reprojection error and absolute survey accuracy.',
+  limitations:'A single video pass cannot guarantee survey accuracy. Reconstruction quality depends on camera motion, overlap, texture, exposure, scene geometry, telemetry/GCP quality, and the native SfM/MVS toolchain.',
+  nextStep:'Continue publishing reproducible runtime checks and hardware-specific validation for CPU, Apple MPS, and NVIDIA CUDA paths.',
+  source:'https://github.com/viditshah5656/single_pass_3D',
+  liveUrl:'https://viditshah5656.github.io/single_pass_3D/'},
+
  {id:'meeraai', title:'MeeraAI / Desktop Assistant & Meera Browser', categories:['AI / ML','Local AI','Software systems','Automation','Voice AI'], level:'Source reviewed', visibility:'private',
   ...meeraSummary,
   technologies:['Python','FastAPI','TypeScript','React','Electron','GGUF','llama.cpp','Playwright','SQLite','MCP','RAG','Qwen3-TTS','faster-whisper'],
@@ -90,13 +103,13 @@ export const featuredSystems: FeaturedSystem[] = [
   evidence:'Project direction was supplied by Vidit as part of his earlier engineering project history. No public repository or hardware test report is linked here.',
   limitations:'No current device inventory, uptime, deployment scale, or benchmark is claimed.',
   nextStep:'Document the exact circuit, firmware, protocol, and test procedure for one reproducible automation scenario.'},
- {id:'gemini-web2api',title:'Gemini Web2API',categories:['AI / ML','APIs','Software systems'],level:'Project brief',visibility:'private',
+ {id:'gemini-web2api',title:'Gemini Web2API / Infera',categories:['AI / ML','APIs','Software systems','Protocol engineering'],level:'Public project',visibility:'public',
   problem:'Experiment with an API-oriented bridge around AI/web capabilities.',
   approach:'Prototype an interface that makes an upstream AI or web capability accessible through a software API.',
   architecture:'Client request -> API layer -> upstream service -> normalized response.',
   technologies:['Python','REST APIs','HTTP clients','AI integration'],
   decisions:'Keep API boundaries, upstream dependencies, and failure semantics explicit.',
-  evidence:'Project identity and API experimentation were supplied by Vidit. The public implementation is represented by the `Infera` repository; this portfolio keeps the project description separate from any provider or upstream-service assumptions.',
+  evidence:'The public `Infera` repository documents Gemini Web2API as a unified AI gateway with provider adapters, model discovery, routing, protocol translation, SSE streaming, OpenAI-compatible endpoints, Anthropic Messages compatibility, Responses API compatibility, and a browser developer console.',
   source:'https://github.com/viditshah5656/Infera',
   limitations:'No public scale, uptime, user count, or production-readiness claim.',
   nextStep:'Publish the endpoint contract, examples, rate limits, and error behavior if the project is made public.'},

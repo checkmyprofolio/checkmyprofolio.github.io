@@ -102,40 +102,24 @@ function evidence(question: string): string {
 }
 function defaultSources(question: string): PortfolioCitation[] {
   const q = question.toLowerCase();
-  const sources: PortfolioCitation[] = [
-    {
-      url: 'https://checkmyprofolio.github.io/',
-      title: 'Vidit Shah — published portfolio',
-      kind: 'portfolio',
-    },
-    {
-      url: 'https://github.com/viditshah5656',
-      title: 'Vidit Shah — GitHub profile',
-      kind: 'github',
-    },
-  ];
-
-  for (const p of portfolioFacts.projects) {
-    const text = `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
-    if (text.split(/\W+/).some((term) => term.length > 3 && q.includes(term))) {
-      if (p.page) {
-        sources.push({
-          url: `https://checkmyprofolio.github.io${p.page}`,
-          title: `${p.title} — portfolio`,
-          kind: 'portfolio',
-        });
-      }
-      if (p.githubUrl && p.githubUrl !== '#') {
-        sources.push({
-          url: p.githubUrl,
-          title: `${p.title} — GitHub`,
-          kind: 'github',
-        });
-      }
+  const projectIntent = /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(q);
+  if (projectIntent) {
+    const sources: PortfolioCitation[] = [{ url: `${PORTFOLIO_ORIGIN}/projects`, title: 'Portfolio — Projects', kind: 'portfolio' }];
+    for (const p of portfolioFacts.featuredSystems) {
+      const haystack = `${p.id} ${p.title} ${p.problem} ${p.categories.join(' ')} ${p.technologies.join(' ')}`.toLowerCase();
+      const matched = q.split(/\W+/).some((token) => token.length > 3 && haystack.includes(token));
+      if (!matched && q.length > 0) continue;
+      if (p.visibility === 'public' && p.source) sources.push({ url: p.source, title: `${p.title} — GitHub`, kind: 'github' });
+      if (p.liveUrl) sources.push({ url: p.liveUrl, title: `${p.title} — live site`, kind: 'portfolio' });
+      if (p.page) sources.push({ url: `${PORTFOLIO_ORIGIN}${p.page}`, title: `${p.title} — portfolio walkthrough`, kind: 'portfolio' });
     }
+    return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
   }
-
-  return [...new Map(sources.map((source) => [source.url, source])).values()].slice(0, 8);
+  return [
+    { url: PORTFOLIO_ORIGIN, title: 'Vidit Shah — published portfolio', kind: 'portfolio' },
+    { url: PORTFOLIO_LINKS.github, title: 'Vidit Shah — GitHub profile', kind: 'github' },
+    { url: PORTFOLIO_LINKS.linkedin, title: 'Vidit Shah — LinkedIn', kind: 'web' },
+  ];
 }
 function emojiFor(text: string, fallback = '✨') {
   const value = text.toLowerCase();
@@ -222,32 +206,7 @@ function enrichWithEmojis(answer: string) {
   return output.join('\n');
 }
 
-function addRelevantLinks(answer: string, question: string) {
-  const q = question.toLowerCase();
-  const projectIntent = /\b(?:project|projects|built|build|meeraai|meera|aarnaai|aarna|binance|gemini|profolio|vision|work)\b/i.test(q);
-  if (!projectIntent) return answer;
-
-  const matched = portfolioFacts.projects.filter((p) => {
-    const haystack = `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
-    return haystack.split(/\W+/).some((term) => term.length > 3 && q.includes(term));
-  });
-  const broadProjectRequest =
-    /\b(?:all|every|each|complete|entire|whole|full|project collection|portfolio work)\b/i.test(q) &&
-    /\b(?:project|projects|work|built)\b/i.test(q);
-  const projects = matched.length ? matched : portfolioFacts.projects;
-  const links = projects
-    .filter((p) => !broadProjectRequest || p.visibility === 'public')
-    .flatMap((p) => {
-      const result: string[] = [];
-      if (p.page) result.push(`[${p.title} — portfolio](${PORTFOLIO_ORIGIN}${p.page})`);
-      if (p.githubUrl && p.githubUrl !== '#') result.push(`[${p.title} — GitHub](${p.githubUrl})`);
-      return result;
-    })
-    .slice(0, matched.length ? 6 : 12);
-
-  if (!links.length || /###\s+(?:explore|project links)\b/i.test(answer)) return answer;
-  return `${answer}\n\n### Explore the project 🔗\n${links.map((link) => `- ${link}`).join('\n')}`;
-}
+function addRelevantLinks(answer: string, _question: string) { return answer; }
 function sanitizeAssistantLinks(text: string) {
   const rewrite = (url: string) => {
     const canonical = canonicalizePortfolioUrl(url);
@@ -517,6 +476,21 @@ export async function streamPortfolioQuestion(
 ): Promise<RemotePortfolioAnswer> {
   const fallbackSources = defaultSources(question);
   const trimmed = question.trim();
+
+  const projectQuestion =
+    /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(trimmed);
+
+  if (projectQuestion) {
+    const answer = normalize(portfolioAnswer(trimmed), trimmed);
+    emit({ event: 'scope', data: 'Using the structured project catalog and verified project visibility.' });
+    emit({ event: 'grounding', data: 'Public, private, and exploration projects are kept separate.' });
+    emit({ event: 'complete', data: 'Structured project response complete.' });
+    return {
+      answer,
+      mode: 'scope',
+      sources: defaultSources(trimmed),
+    };
+  }
 
   if (isRuntimePrivacyQuestion(trimmed)) {
     return runtimePrivacyAnswer();

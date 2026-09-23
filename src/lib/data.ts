@@ -60,6 +60,7 @@ export const projects: Project[] = featuredSystems.filter(system => system.level
   buildNotes: [`Decision: ${system.decisions}`, `Evidence: ${system.evidence}`, `Limitations: ${system.limitations}`, `Proposed next step: ${system.nextStep}`],
   visibility: system.visibility,
   githubUrl: system.source,
+  liveUrl: system.liveUrl,
   internalHref: system.page,
   ctaLabel: system.page ? 'View walkthrough' : undefined,
   backdrop: 'linear-gradient(135deg, rgba(14,165,233,0.28), rgba(15,23,42,0.92) 38%, rgba(132,204,22,0.18))',

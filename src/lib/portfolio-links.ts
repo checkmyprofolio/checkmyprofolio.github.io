@@ -8,6 +8,8 @@ export const PORTFOLIO_LINKS = {
   email: 'mailto:viditshah5656@gmail.com',
   emailAddress: 'viditshah5656@gmail.com',
   binanceCli: 'https://github.com/viditshah5656/binance-futures-trading-bot',
+  infera: 'https://github.com/viditshah5656/Infera',
+  aerosynth3d: 'https://github.com/viditshah5656/single_pass_3D',
 } as const;
 
 export const PORTFOLIO_ROUTES = {
@@ -67,7 +69,14 @@ export function isTrustedPortfolioUrl(value: string): boolean {
     const parsed = new URL(url);
     if (parsed.hostname === 'checkmyprofolio.github.io') return true;
     if (parsed.hostname === 'github.com') {
-      return parsed.pathname === '/viditshah5656' || parsed.pathname.startsWith('/viditshah5656/');
+      const allowedPaths = new Set([
+        '/viditshah5656',
+        '/viditshah5656/binance-futures-trading-bot',
+        '/viditshah5656/Infera',
+        '/viditshah5656/single_pass_3D',
+        '/checkmyprofolio/checkmyprofolio.github.io',
+      ]);
+      return allowedPaths.has(parsed.pathname.replace(/\/$/, ''));
     }
     if (parsed.hostname === 'www.linkedin.com' && parsed.pathname === '/in/viditshah5656/') return true;
     if (parsed.hostname === 'linkedin.com' && parsed.pathname === '/in/viditshah5656/') return true;
