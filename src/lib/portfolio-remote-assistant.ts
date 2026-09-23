@@ -547,12 +547,20 @@ export async function streamPortfolioQuestion(
     return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
+  const specificProjectMention =
+    /\b(?:meeraai|meera|aarnaai|aarna|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini web2api|gemini|web2api|omniroute|binance|futures testnet|profolio)\b/i.test(trimmed);
   const asksForAllProjects =
-    /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,60}\b(?:project|projects|work|things)\b/i.test(trimmed) ||
-    /\b(?:project|projects|work)\b[\s\S]{0,60}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(trimmed) ||
-    /\b(?:list|catalog|collection|overview|portfolio)\b[\s\S]{0,30}\b(?:project|projects|work|things)\b/i.test(trimmed) ||
-    /\b(?:what|which)\b[\s\S]{0,20}\b(?:have|has)\b[\s\S]{0,20}\b(?:built|created|made|worked on)\b/i.test(trimmed);
+    !specificProjectMention && (
+      /\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview|portfolio)\b[\s\S]{0,80}\b(?:project|projects|work|things|built)\b/i.test(trimmed) ||
+      /\b(?:project|projects|work)\b[\s\S]{0,80}\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview)\b/i.test(trimmed) ||
+      /\b(?:what|which)\b[\s\S]{0,30}\b(?:have|has|did)\b[\s\S]{0,30}\b(?:built|created|made|worked on)\b/i.test(trimmed) ||
+      /\b(?:tell|explain|describe)\b[\s\S]{0,30}\b(?:me|us)\b[\s\S]{0,30}\b(?:about|regarding)\b[\s\S]{0,30}\b(?:his|vidit['’]s|the)\b[\s\S]{0,20}\b(?:project|projects|work)\b/i.test(trimmed)
+    );
 
+  const asksForProfile = !specificProjectMention && /\b(?:who|about|introduce|introduction|tell me about|describe)\b/i.test(trimmed) && !/\b(?:project|projects)\b/i.test(trimmed);
+
+  if (asksForProfile) {
+    const answer = normalize(portfolioAnswer(trimmed), trimmed);
   if (asksForAllProjects) {
     const answer = normalize(portfolioAnswer(trimmed), trimmed);
     emit({ event: 'scope', data: 'Using the complete public/private project catalog.' });
