@@ -33,10 +33,13 @@ export const portfolioFacts = {
 };
 export function portfolioAnswer(question: string) {
  const q = question.toLowerCase();
- const allProjects = /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,60}\b(?:project|projects|work|things)\b/i.test(q)
-   || /\b(?:project|projects|work)\b[\s\S]{0,60}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(q)
-   || /\b(?:list|catalog|collection|overview|portfolio)\b[\s\S]{0,30}\b(?:project|projects|work|things)\b/i.test(q)
-   || /\b(?:what|which)\b[\s\S]{0,20}\b(?:have|has)\b[\s\S]{0,20}\b(?:built|created|made|worked on)\b/i.test(q);
+ const specificProjectMention = /\b(?:meeraai|meera|aarnaai|aarna|airlearn|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini web2api|gemini|web2api|omniroute|binance|futures testnet|profolio)\b/i.test(q);
+ const allProjects = !specificProjectMention && (
+   /\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview|portfolio)\b[\s\S]{0,80}\b(?:project|projects|work|things|built)\b/i.test(q)
+   || /\b(?:project|projects|work)\b[\s\S]{0,80}\b(?:all|every|each|complete|entire|whole|full|list|catalog|collection|overview)\b/i.test(q)
+   || /\b(?:what|which)\b[\s\S]{0,30}\b(?:have|has|did)\b[\s\S]{0,30}\b(?:built|created|made|worked on)\b/i.test(q)
+   || /\b(?:tell|explain|describe)\b[\s\S]{0,30}\b(?:me|us)\b[\s\S]{0,30}\b(?:about|regarding)\b[\s\S]{0,30}\b(?:his|vidit['’]s|the)\b[\s\S]{0,20}\b(?:project|projects|work)\b/i.test(q)
+ );
 
  if (allProjects) {
    const publicProjects = featuredSystems.filter((p) => p.visibility === 'public');
@@ -78,6 +81,27 @@ export function portfolioAnswer(question: string) {
   const name = p.title.startsWith('MeeraAI') ? 'meeraai' : p.title.startsWith('AarnaAI') ? 'aarnaai' : p.title.startsWith('Binance') ? 'binance' : p.title.toLowerCase();
   return new RegExp(`\\b${name}\\b`, 'i').test(q) || p.tags.some(t => q.includes(t.toLowerCase()));
  });
+ if (/\b(?:who|about|introduce|introduction|tell me about|describe)\b/i.test(q) && !specificProjectMention && !/\b(?:project|projects)\b/i.test(q)) {
+   return `# About Vidit Shah 👋
+
+Vidit Shah is a Robotics & AI Engineer who completed a B.E. in Robotics & Automation in 2026 at Government Engineering College, Sector-28, Gandhinagar, under Gujarat Technological University (GTU), with a final CGPA of 8.45/10.
+
+## Engineering focus 🧠
+- Robotics, artificial intelligence and machine learning
+- Computer vision, automation and control systems
+- Local AI / LLM systems, software engineering and API integration
+- Intelligent assistants, hardware-aware computing and system experimentation
+
+## Project portfolio overview 🚀
+Vidit's work includes public software projects as well as private/personal engineering projects. The project catalog is intentionally separated by visibility rather than presenting one project as the main one.
+
+## Public profile links 🔗
+- [GitHub profile](${portfolioFacts.contact.github})
+- [LinkedIn profile](${portfolioFacts.contact.linkedin})
+- [ORCID](${portfolioFacts.contact.orcid})
+
+Private project source repositories are not linked unless the portfolio explicitly records them as public.`;
+ }
  if (/contact|email|reach|linkedin/.test(q)) return `You can reach me at ${portfolioFacts.contact.email}, or visit ${portfolioFacts.contact.linkedin}.`;
  if (/cgpa|grade/.test(q)) return `I completed my B.E. in Robotics & Automation in 2026 with a final CGPA of ${identity.cgpa}, at ${identity.institution}, affiliated with ${identity.university}.`;
  if (/course|curriculum|foundation/.test(q)) return foundation.map(f => `${f.area}: ${f.courses.join(', ')}. ${f.meaning}`).join('\n\n');
