@@ -1,4 +1,4 @@
-import { portfolioFacts } from './portfolio-knowledge';
+import { portfolioAnswer, portfolioFacts } from './portfolio-knowledge';
 import { PORTFOLIO_LINKS, PORTFOLIO_ORIGIN, PORTFOLIO_ROUTES, canonicalizePortfolioUrl, isTrustedPortfolioUrl } from './portfolio-links';
 
 export const CONTEXT_WINDOW = 80000;
@@ -542,6 +542,23 @@ export async function streamPortfolioQuestion(
     const answer = '### Personal detail\nI don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.';
     emit({ event: 'complete', data: 'Unsupported personal detail declined.' });
     return { answer, mode: 'model-generated', sources: fallbackSources };
+  }
+
+  const asksForAllProjects =
+    /\b(?:all|every|each|complete|entire|whole|full)\b[\s\S]{0,60}\b(?:project|projects|work|things)\b/i.test(trimmed) ||
+    /\b(?:project|projects|work)\b[\s\S]{0,60}\b(?:all|every|each|complete|entire|whole|full)\b/i.test(trimmed) ||
+    /\b(?:list|catalog|collection)\b[\s\S]{0,30}\b(?:project|projects)\b/i.test(trimmed);
+
+  if (asksForAllProjects) {
+    const answer = normalize(portfolioAnswer(trimmed), trimmed);
+    emit({ event: 'scope', data: 'Using the complete public/private project catalog.' });
+    emit({ event: 'grounding', data: 'All recorded projects are grouped by visibility and evidence status.' });
+    emit({ event: 'complete', data: 'Complete project catalog response.' });
+    return {
+      answer,
+      mode: 'scope',
+      sources: fallbackSources,
+    };
   }
 
   emit({ event: 'scope', data: 'Preparing a direct portfolio answer.' });
