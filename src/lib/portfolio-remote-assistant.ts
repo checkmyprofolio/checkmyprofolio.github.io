@@ -228,8 +228,12 @@ function addRelevantLinks(answer: string, question: string) {
     const haystack = `${p.title} ${p.description} ${p.tags.join(' ')}`.toLowerCase();
     return haystack.split(/\W+/).some((term) => term.length > 3 && q.includes(term));
   });
+  const broadProjectRequest =
+    /\b(?:all|every|each|complete|entire|whole|full|project collection|portfolio work)\b/i.test(q) &&
+    /\b(?:project|projects|work|built)\b/i.test(q);
   const projects = matched.length ? matched : portfolioFacts.projects;
   const links = projects
+    .filter((p) => !broadProjectRequest || p.visibility === 'public')
     .flatMap((p) => {
       const result: string[] = [];
       if (p.page) result.push(`[${p.title} — portfolio](${PORTFOLIO_ORIGIN}${p.page})`);
