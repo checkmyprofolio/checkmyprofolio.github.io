@@ -30,6 +30,8 @@ jobs:
           enablement: true
       - name: Install dependencies
         run: npm install
+      - name: Test portfolio AI policy
+        run: npm run test:portfolio-ai
       - name: Typecheck application
         run: npm run typecheck
       - name: Build with Next.js
