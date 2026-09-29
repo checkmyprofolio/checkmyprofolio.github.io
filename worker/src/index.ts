@@ -344,6 +344,7 @@ function classifyRequestScope(question: string): RequestScope {
   const explicitPortfolio =
     /\b(?:vidit|shah|profolio|portfolio|meeraai|meera\s*ai|aarnaai|aarna\s*ai|airlearn|aerosynth|infera|omniroute|binance\s+futures|single[- ]pass\s+3d|gemini\s+web2api|ai\s+cctv|youtube\s+music\s+automation)\b/i.test(q) ||
     /\b(?:his|him)\b/i.test(q) ||
+    /\b(?:website|site|homepage|page|pages|navigation|navigate|section|sections|dashboard|profile|projects?|contact|links?|social)\b/i.test(q) ||
     /\b(?:this|your|vidit'?s)\s+(?:site|website|page|profile|portfolio|github|repository|repo|projects?|work|skills?|education|degree|career|experience|background|resume|contact)\b/i.test(q);
 
   if (explicitPortfolio) return 'portfolio';
