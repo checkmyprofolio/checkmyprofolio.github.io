@@ -45,11 +45,11 @@ Profolio AI uses the published portfolio evidence for Vidit-specific facts and k
 const prompts = [
   '🧠 What is MeeraAI?',
   '👋 Tell me about Vidit',
-  '🚀 What have I built?',
-  '💻 What are my skills?',
+  '🚀 What has he built?',
+  '💻 What are his skills?',
   '🧭 Show me the website sections',
-  '🔗 Open my GitHub',
-  '🔗 Open my LinkedIn',
+  '🔗 Open his GitHub',
+  '🔗 Open his LinkedIn',
   '📫 Open Contact',
 ];
 
@@ -468,7 +468,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
       {error && <p role="alert" className="mb-3 text-sm text-destructive">{error}</p>}
       <form onSubmit={(event) => { event.preventDefault(); send(input); }} className="flex items-end gap-2">
         <label htmlFor="portfolio-question" className="sr-only">Your question</label>
-        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about a project, page, or about me..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
+        <Textarea id="portfolio-question" value={input} onChange={(event) => setInput(event.target.value)} maxLength={2000} rows={2} placeholder="Ask about Vidit, a project, page, or engineering topic..." className="min-h-[60px] max-h-32 resize-none rounded-2xl border-white/50 bg-white/50 focus-visible:ring-primary/40 dark:border-white/15 dark:bg-slate-950/30" onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(input); } }} />
         <Button type="submit" size="icon" disabled={busy || !modelReady || !input.trim()} aria-label="Send question" className="mb-1 h-12 w-12 shrink-0 rounded-2xl shadow-lg shadow-primary/20"><Send className="h-4 w-4" /></Button>
       </form>
       <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
