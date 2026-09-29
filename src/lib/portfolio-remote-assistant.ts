@@ -127,6 +127,34 @@ function isPortfolioIntent(question: string) {
     !/\b(?:needed|required|learn|roadmap|become|for\s+(?:ai|ml|robotics|software|web|data))\b/i.test(q);
 }
 
+type ClientRequestScope = 'portfolio' | 'technical' | 'out-of-scope';
+
+function isRelatedTechnicalIntent(question: string) {
+  const q = question.toLowerCase();
+  return (
+    /\b(?:artificial intelligence|machine learning|deep learning|llm|rag|retrieval[- ]augmented|robotics?|automation|computer vision|control systems?|plc|microcontrollers?|iot|python|typescript|javascript|react|next\.?js|fastapi|electron|api|rest|software engineering|programming|git|github|database|sql|algorithm|data structures?|neural networks?|transformers?|inference|quantization|lora|qlora|gguf|mcp|playwright|web development|cloud|deployment|testing|debugging|cybersecurity)\b/i.test(q) ||
+    /\bai\b/i.test(q)
+  );
+}
+
+function classifyClientRequestScope(question: string): ClientRequestScope {
+  if (isPortfolioIntent(question)) return 'portfolio';
+  if (isRelatedTechnicalIntent(question)) return 'technical';
+  return 'out-of-scope';
+}
+
+function sanitizeTechnicalAnswer(answer: string) {
+  const cleaned = answer
+    .split('\n')
+    .filter((line) => !/\b(?:vidit|shah|he|his|him)\b/i.test(line))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return cleaned ||
+    "I can explain this technical topic generally, but I won't attach unsupported personal claims to the portfolio owner.";
+}
+
 function defaultSources(question: string): PortfolioCitation[] {
   if (!isPortfolioIntent(question)) return [];
   const q = question.toLowerCase();
@@ -541,7 +569,16 @@ export async function streamPortfolioQuestion(
     return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
-  emit({ event: 'scope', data: 'Checking request scope and evidence.' });
+  const requestScope = classifyClientRequestScope(trimmed);
+  if (requestScope === 'out-of-scope') {
+    const answer =
+      "## Portfolio scope 🧭\nProfolio AI is focused on Vidit Shah's published portfolio, projects, engineering work, and related technical topics. I don't use general model knowledge for unrelated subjects.";
+    emit({ event: 'scope', data: 'Rejected: outside portfolio and related technical scope.' });
+    emit({ event: 'complete', data: 'Scope response ready.' });
+    return { answer, mode: 'scope', sources: [] };
+  }
+
+  emit({ event: 'scope', data: requestScope === 'portfolio' ? 'Portfolio request accepted.' : 'Related technical request accepted.' });
   emit({ event: 'retrieval', data: 'Preparing the appropriate response…' });
 
   try {
@@ -555,7 +592,7 @@ export async function streamPortfolioQuestion(
         },
         body: JSON.stringify({
           question,
-          evidence: evidence(question),
+          evidence: requestScope === 'portfolio' ? evidence(question) : '',
           history: history.slice(-2),
           source: 'checkmyprofolio.github.io',
         }),
@@ -598,18 +635,21 @@ export async function streamPortfolioQuestion(
 
     if (!response.body || !(response.headers.get('content-type') || '').includes('text/event-stream')) {
       const payload = (await response.json()) as { answer?: unknown; mode?: 'model-generated' | 'scope' | 'error'; notice?: string; sources?: PortfolioCitation[] };
-      const answer = typeof payload.answer === 'string' ? normalize(payload.answer, question) : '';
+      const normalized = typeof payload.answer === 'string' ? normalize(payload.answer, question) : '';
+      const answer = requestScope === 'technical' ? sanitizeTechnicalAnswer(normalized) : normalized;
       if (!answer) throw new Error('Remote AI returned an empty response.');
       emit({ event: 'complete', data: 'Response complete.' });
       return {
         answer,
         mode: payload.mode || 'model-generated',
         notice: payload.notice,
-        sources: Array.isArray(payload.sources)
-          ? payload.sources
-          : sourceHeaderPresent
-            ? sourcesFromHeader
-            : fallbackSources,
+        sources: requestScope === 'technical'
+          ? []
+          : Array.isArray(payload.sources)
+            ? payload.sources
+            : sourceHeaderPresent
+              ? sourcesFromHeader
+              : fallbackSources,
       };
     }
 
@@ -658,13 +698,16 @@ export async function streamPortfolioQuestion(
 
     if (buffer.trim()) processFrame(buffer);
 
-    const answer = normalize(fullAnswer, question);
+    const normalized = normalize(fullAnswer, question);
+    const answer = requestScope === 'technical' ? sanitizeTechnicalAnswer(normalized) : normalized;
     if (!answer) throw new Error('Remote AI returned an empty response.');
-    const finalSources = citations.size
-      ? [...citations.values()]
-      : sourceHeaderPresent
-        ? sourcesFromHeader
-        : fallbackSources;
+    const finalSources = requestScope === 'technical'
+      ? []
+      : citations.size
+        ? [...citations.values()]
+        : sourceHeaderPresent
+          ? sourcesFromHeader
+          : fallbackSources;
 
     emit({
       event: 'grounding',
