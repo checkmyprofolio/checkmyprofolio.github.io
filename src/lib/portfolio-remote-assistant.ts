@@ -108,7 +108,27 @@ function evidence(question: string): string {
 
   return JSON.stringify(result).slice(0, asksForAllProjects ? 24000 : 20000);
 }
+function isPortfolioIntent(question: string) {
+  const q = question.toLowerCase();
+
+  if (
+    /\b(?:vidit|shah|profolio|portfolio|meeraai|meera\s*ai|aarnaai|aarna\s*ai|airlearn|aerosynth|infera|omniroute|binance\s+futures|single[- ]pass\s+3d|gemini\s+web2api|ai\s+cctv|youtube\s+music\s+automation)\b/i.test(q) ||
+    /\b(?:his|him)\b/i.test(q) ||
+    /\b(?:this|your|vidit'?s)\s+(?:site|website|page|profile|portfolio|github|repository|repo|projects?|work|skills?|education|degree|career|experience|background|resume|contact)\b/i.test(q)
+  ) {
+    return true;
+  }
+
+  if (/\b(?:education|degree|cgpa|career|experience|background|resume|certificate|contact)\b/i.test(q)) {
+    return true;
+  }
+
+  return /\bskills?\b/i.test(q) &&
+    !/\b(?:needed|required|learn|roadmap|become|for\s+(?:ai|ml|robotics|software|web|data))\b/i.test(q);
+}
+
 function defaultSources(question: string): PortfolioCitation[] {
+  if (!isPortfolioIntent(question)) return [];
   const q = question.toLowerCase();
   const projectIntent = /\b(?:project|projects|built|build|work|meeraai|meera|aarnaai|airlearn|cctv|surveillance|youtube music|music automation|iot|esp32|gemini|web2api|infera|omniroute|binance|profolio|aerosynth|photogrammetry|drone reconstruction)\b/i.test(q);
   if (projectIntent) {
@@ -480,7 +500,7 @@ function runtimePrivacyAnswer(): RemotePortfolioAnswer {
     answer:
       "## Profolio AI privacy 🔒\nI keep my underlying model, provider, and backend implementation details private. I can explain my capabilities and the information available in Vidit's public portfolio, but I do not expose the runtime technology behind this assistant.",
     mode: 'scope',
-    sources: defaultSources(''),
+    sources: [],
   };
 }
 
@@ -500,7 +520,7 @@ export async function streamPortfolioQuestion(
   if (/^(?:hi|hello|hey|heyy|hey there|yo|sup|good morning|good afternoon|good evening)[!.\s]*$/i.test(trimmed)) {
     const answer = 'Hey! 👋 I’m Profolio AI, the assistant for Vidit’s public portfolio. I can help with his projects, engineering work, skills, education, and technical background.';
     emit({ event: 'complete', data: 'Immediate conversational response.' });
-    return { answer, mode: 'model-generated', sources: fallbackSources };
+    return { answer, mode: 'model-generated', sources: [] };
   }
 
   if (/^(?:thanks|thank you|thx|ty|got it|okay|ok|cool|nice|great|perfect)[!.\s]*$/i.test(trimmed)) {
@@ -508,7 +528,7 @@ export async function streamPortfolioQuestion(
       ? 'You’re welcome. Glad that helped.'
       : 'Got it.';
     emit({ event: 'complete', data: 'Immediate conversational response.' });
-    return { answer, mode: 'model-generated', sources: fallbackSources };
+    return { answer, mode: 'model-generated', sources: [] };
   }
 
   if (
@@ -521,9 +541,8 @@ export async function streamPortfolioQuestion(
     return { answer, mode: 'model-generated', sources: fallbackSources };
   }
 
-  emit({ event: 'scope', data: 'Preparing a direct portfolio answer.' });
-  emit({ event: 'retrieval', data: 'Using published portfolio evidence for this question.' });
-  emit({ event: 'retrieval', data: 'Generating your answer…' });
+  emit({ event: 'scope', data: 'Checking request scope and evidence.' });
+  emit({ event: 'retrieval', data: 'Preparing the appropriate response…' });
 
   try {
     const response = await fetchWithTimeout(
@@ -558,8 +577,10 @@ export async function streamPortfolioQuestion(
       throw new Error(message);
     }
 
+    const sourceHeader = response.headers.get('X-Portfolio-Sources');
+    const sourceHeaderPresent = sourceHeader !== null;
     const sourcesFromHeader = (() => {
-      const header = response.headers.get('X-Portfolio-Sources');
+      const header = sourceHeader;
       if (!header) return [] as PortfolioCitation[];
       try {
         const parsed = JSON.parse(decodeURIComponent(header)) as unknown[];
@@ -584,7 +605,11 @@ export async function streamPortfolioQuestion(
         answer,
         mode: payload.mode || 'model-generated',
         notice: payload.notice,
-        sources: payload.sources?.length ? payload.sources : (sourcesFromHeader.length ? sourcesFromHeader : fallbackSources),
+        sources: Array.isArray(payload.sources)
+          ? payload.sources
+          : sourceHeaderPresent
+            ? sourcesFromHeader
+            : fallbackSources,
       };
     }
 
@@ -635,13 +660,24 @@ export async function streamPortfolioQuestion(
 
     const answer = normalize(fullAnswer, question);
     if (!answer) throw new Error('Remote AI returned an empty response.');
-    emit({ event: 'grounding', data: 'Answer generated from published portfolio evidence.' });
+    const finalSources = citations.size
+      ? [...citations.values()]
+      : sourceHeaderPresent
+        ? sourcesFromHeader
+        : fallbackSources;
+
+    emit({
+      event: 'grounding',
+      data: finalSources.length
+        ? 'Answer grounded in published portfolio evidence.'
+        : 'No portfolio evidence was used for this response.',
+    });
     emit({ event: 'complete', data: 'Response complete.' });
 
     return {
       answer,
       mode: 'model-generated',
-      sources: citations.size ? [...citations.values()] : fallbackSources,
+      sources: finalSources,
     };
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -651,7 +687,7 @@ export async function streamPortfolioQuestion(
       answer: '# Profolio AI is temporarily unavailable\n\nThe assistant could not complete this request. Please try again shortly.',
       mode: 'error',
       notice: 'The assistant could not complete the request.',
-      sources: fallbackSources,
+      sources: [],
     };
   }
 }

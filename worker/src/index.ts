@@ -109,7 +109,7 @@ async function fetchFirstPartyContext(
 ): Promise<{ context: string; sources: Source[] }> {
   const q = question.toLowerCase();
   const portfolioQuestion =
-    /\b(?:vidit|his|he|about me|about vidit|bio|biography|education|degree|cgpa|skills?|experience|career|projects?|built|builds|meeraai|meera|github|repository|repo|website|site|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(
+    /\b(?:vidit|his|he|about me|about vidit|bio|biography|education|degree|cgpa|skills?|experience|career|projects?|built|builds|meeraai|meera|aarnaai|aarna|airlearn|aerosynth|infera|omniroute|binance|gemini|web2api|cctv|esp32|iot|github|repository|repo|website|site|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(
       q,
     );
   const broadProfileQuestion =
@@ -326,6 +326,56 @@ function scrubRuntimeDisclosure(text: string) {
   return text;
 }
 
+type RequestScope = 'portfolio' | 'technical' | 'conversation' | 'out-of-scope';
+
+const PORTFOLIO_SCOPE_REPLY =
+  "## Portfolio scope 🧭\nProfolio AI is focused on Vidit Shah's published portfolio, projects, engineering work, and related technical topics. I don't use general model knowledge for unrelated subjects.";
+
+function classifyRequestScope(question: string): RequestScope {
+  const q = question.trim().toLowerCase();
+
+  if (
+    /^(?:hi|hello|hey|heyy|hey there|yo|sup|good morning|good afternoon|good evening|thanks|thank you|thx|ty|got it|okay|ok|cool|nice|great|perfect)[!.\s]*$/i.test(q) ||
+    /\bwho\s+are\s+you\b/i.test(q)
+  ) {
+    return 'conversation';
+  }
+
+  const explicitPortfolio =
+    /\b(?:vidit|shah|profolio|portfolio|meeraai|meera\s*ai|aarnaai|aarna\s*ai|airlearn|aerosynth|infera|omniroute|binance\s+futures|single[- ]pass\s+3d|gemini\s+web2api|ai\s+cctv|youtube\s+music\s+automation)\b/i.test(q) ||
+    /\b(?:his|him)\b/i.test(q) ||
+    /\b(?:this|your|vidit'?s)\s+(?:site|website|page|profile|portfolio|github|repository|repo|projects?|work|skills?|education|degree|career|experience|background|resume|contact)\b/i.test(q);
+
+  if (explicitPortfolio) return 'portfolio';
+
+  if (
+    /\b(?:education|degree|cgpa|career|experience|background|resume|certificate|contact)\b/i.test(q)
+  ) {
+    return 'portfolio';
+  }
+
+  if (
+    /\bskills?\b/i.test(q) &&
+    !/\b(?:needed|required|learn|roadmap|become|for\s+(?:ai|ml|robotics|software|web|data))\b/i.test(q)
+  ) {
+    return 'portfolio';
+  }
+
+  const technical =
+    /\b(?:artificial intelligence|machine learning|deep learning|llm|rag|retrieval[- ]augmented|robotics?|automation|computer vision|control systems?|plc|microcontrollers?|iot|python|typescript|javascript|react|next\.?js|fastapi|electron|api|rest|software engineering|programming|git|github|database|sql|algorithm|data structures?|neural networks?|transformers?|inference|quantization|lora|qlora|gguf|mcp|playwright|web development|cloud|deployment|testing|debugging|cybersecurity)\b/i.test(q) ||
+    /\bai\b/i.test(q);
+
+  return technical ? 'technical' : 'out-of-scope';
+}
+
+function conversationReply(question: string) {
+  if (/^(?:thanks|thank you|thx|ty)/i.test(question.trim())) {
+    return "You're welcome. Glad that helped.";
+  }
+
+  return "Hey! 👋 I'm Profolio AI, the assistant for Vidit's public portfolio. I can help with his projects, engineering work, skills, education, and related technical topics.";
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') {
@@ -344,7 +394,9 @@ export default {
         service: 'portfolio-ai',
         firstPartySources: true,
         citations: true,
-        generalQuestions: true,
+        generalQuestions: false,
+        relatedTechnicalQuestions: true,
+        scopeEnforced: true,
         responseFormat: 'stream',
       });
     }
@@ -383,33 +435,33 @@ export default {
         return json({
           answer: RUNTIME_PRIVACY_REPLY,
           mode: 'scope',
-          sources: [
-            {
-              url: 'https://checkmyprofolio.github.io/',
-              title: 'Vidit Shah — published portfolio',
-              kind: 'portfolio' as const,
-            },
-          ],
+          sources: [],
         });
       }
 
-      const firstPartyQuestion =
-        /\b(?:github|repository|repo|source code|codebase|commit|commits|pull request|pull requests|project|projects|built|build|meeraai|meera|aarnaai|aarna|gemini|profolio|vision|robotics|automation|website|site|page|pages|navigation|navigate|section|sections|dashboard|profile|contact|links?|social)\b/i.test(
-          question,
-        );
+      const scope = classifyRequestScope(question);
 
+      if (scope === 'out-of-scope') {
+        return json({
+          answer: PORTFOLIO_SCOPE_REPLY,
+          mode: 'scope',
+          sources: [],
+        });
+      }
+
+      if (scope === 'conversation') {
+        return json({
+          answer: conversationReply(question),
+          mode: 'model-generated',
+          sources: [],
+        });
+      }
+
+      const firstPartyQuestion = scope === 'portfolio';
       const firstParty = firstPartyQuestion
         ? await fetchFirstPartyContext(question)
-        : {
-            context: '',
-            sources: [
-              {
-                url: 'https://checkmyprofolio.github.io/',
-                title: 'Vidit Shah — published portfolio',
-                kind: 'portfolio' as const,
-              },
-            ],
-          };
+        : { context: '', sources: [] };
+      const scopedClientEvidence = firstPartyQuestion ? clientEvidence : '';
 
       const system = `You are Profolio AI, the friendly professional assistant for Vidit Shah's public portfolio.
 
@@ -417,6 +469,12 @@ IDENTITY
 - You are Profolio AI, not Vidit.
 - Refer to Vidit as Vidit, he, his, or Vidit's.
 - Never pretend to be Vidit and never call Vidit's work "my projects", "my degree", or "my experience".
+
+REQUEST MODE
+- Current mode: ${scope}.
+- In portfolio mode, every claim about Vidit must be supported by the supplied portfolio/GitHub evidence.
+- In technical mode, answer only as general technical knowledge. Do not attribute any action, preference, experience, skill, project, recipe, opinion, or personal fact to Vidit. Do not mention Vidit unless the user explicitly asks about him.
+- Out-of-scope requests never reach model inference.
 
 FACTS AND HONESTY
 - Use the published portfolio evidence below for Vidit-specific facts.
@@ -491,10 +549,10 @@ Visitor: "Tell me about all his projects."
 Profolio AI: "## Vidit's Projects 🚀" followed by **Public projects**, **Private/personal projects**, and any **Current exploration**, covering every project supplied in the portfolio evidence without singling one out.
 
 LIVE GITHUB EVIDENCE:
-${firstParty.context}
+${firstParty.context || '[none]'}
 
 PUBLISHED PORTFOLIO EVIDENCE:
-${clientEvidence}`;
+${scopedClientEvidence || '[none]'}`;
 
       // Production inference stays on the fast 3B model, but the browser
       // receives one complete response. This avoids choppy token rendering.

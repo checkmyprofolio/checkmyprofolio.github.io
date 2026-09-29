@@ -166,25 +166,33 @@ function CitationPill({ sources = [] }: { sources?: PortfolioCitation[] }) {
       .map((source) => [source.url, source]),
   ).values()];
 
+  if (!citations.length) {
+    return (
+      <span
+        className="flex items-center gap-1.5 rounded-full border border-slate-500/15 bg-slate-500/[0.035] px-2.5 py-1 text-[10px] font-semibold text-muted-foreground"
+        aria-label="No evidence sources were used for this response"
+      >
+        <ExternalLink className="h-3 w-3" />
+        <span>0 sources</span>
+      </span>
+    );
+  }
+
   return (
     <details className="relative shrink-0">
       <summary
         className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-primary/20 bg-primary/[0.07] px-2.5 py-1 text-[10px] font-semibold text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10"
-        aria-label={`View ${citations.length} sources consulted for this response`}
+        aria-label={`View ${citations.length} evidence sources for this response`}
       >
         <ExternalLink className="h-3 w-3" />
         <span>{citations.length} source{citations.length === 1 ? '' : 's'}</span>
       </summary>
       <div className="absolute right-0 top-8 z-30 w-80 max-w-[82vw] rounded-2xl border border-white/60 bg-background/95 p-3 shadow-2xl backdrop-blur-xl dark:border-white/10">
         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          Sources consulted
+          Evidence sources
         </p>
         <div className="space-y-1.5">
-          {(citations.length ? citations : [{
-            url: 'https://checkmyprofolio.github.io/',
-            title: 'Vidit Shah — published portfolio',
-            kind: 'portfolio' as const,
-          }]).map((source, index) => (
+          {citations.map((source, index) => (
             <a
               key={`${source.url}-${index}`}
               href={source.url}
