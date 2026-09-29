@@ -5,10 +5,12 @@ import ts from 'typescript';
 
 const workerPath = 'worker/src/index.ts';
 const remotePath = 'src/lib/portfolio-remote-assistant.ts';
+const chatPath = 'src/components/sections/portfolio-chat.tsx';
 
-const [workerSource, remoteSource] = await Promise.all([
+const [workerSource, remoteSource, chatSource] = await Promise.all([
   readFile(workerPath, 'utf8'),
   readFile(remotePath, 'utf8'),
+  readFile(chatPath, 'utf8'),
 ]);
 
 for (const forbidden of [
@@ -28,11 +30,13 @@ for (const forbidden of [
 }
 
 for (const required of [
-  'auditGeneratedAnswer',
+  'streamAuditedAnswer',
   'llmGeneratedResponses: true',
   'groundingAudit: true',
-  "responseFormat: 'complete'",
+  "responseFormat: 'stream'",
   'stream: false',
+  'stream: true',
+  "'Content-Type': 'text/event-stream; charset=utf-8'",
 ]) {
   assert.equal(workerSource.includes(required), true, `missing worker safeguard: ${required}`);
 }
@@ -58,6 +62,8 @@ const cases = [
   ['Who is Vidit Shah?', 'portfolio'],
   ['Show me the website sections', 'portfolio'],
   ['What projects has he built?', 'portfolio'],
+  ['What has he built?', 'portfolio'],
+  ['What are his skills?', 'portfolio'],
   ["What's Vidit's CGPA?", 'portfolio'],
   ['Explain RAG', 'technical'],
   ['How does ROS2 work?', 'technical'],
@@ -74,5 +80,26 @@ for (const [question, expected] of cases) {
   const actual = classify(question);
   assert.equal(actual, expected, `${question} -> ${actual}, expected ${expected}`);
 }
+
+for (const expectedPrompt of [
+  '🚀 What has he built?',
+  '💻 What are his skills?',
+  '🔗 Open his GitHub',
+  '🔗 Open his LinkedIn',
+]) {
+  assert.equal(chatSource.includes(expectedPrompt), true, `missing visitor-facing prompt: ${expectedPrompt}`);
+}
+
+for (const forbiddenPrompt of [
+  '🚀 What have I built?',
+  '💻 What are my skills?',
+  '🔗 Open my GitHub',
+  '🔗 Open my LinkedIn',
+]) {
+  assert.equal(chatSource.includes(forbiddenPrompt), false, `first-person visitor prompt still present: ${forbiddenPrompt}`);
+}
+
+assert.equal(remoteSource.includes('emitProgressiveTokens'), true, 'non-stream compatibility token reveal missing');
+assert.equal(remoteSource.includes("response.headers.get('X-Portfolio-Mode')"), true, 'stream mode metadata handling missing');
 
 console.log(`Portfolio AI policy regression suite passed (${cases.length} intent cases + architecture assertions).`);
