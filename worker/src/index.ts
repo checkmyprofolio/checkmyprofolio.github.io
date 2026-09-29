@@ -307,10 +307,7 @@ function safeHistory(
 
 type RequestScope = 'portfolio' | 'technical' | 'conversation' | 'out-of-scope';
 
-const PORTFOLIO_SCOPE_REPLY =
-  "## Portfolio scope 🧭\nProfolio AI is focused on Vidit Shah's published portfolio, projects, engineering work, and related technical topics. I don't use general model knowledge for unrelated subjects.";
-
-function classifyRequestScope(question: string): RequestScope {
+export function classifyRequestScope(question: string): RequestScope {
   const q = question.trim().toLowerCase();
 
   if (
