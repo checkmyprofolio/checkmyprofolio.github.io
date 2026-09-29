@@ -223,7 +223,7 @@ function AssistantHeader({ sources = [] }: { sources?: PortfolioCitation[] }) {
           Profolio AI 🤖
         </span>
         <span className="hidden text-[10px] text-muted-foreground/60 sm:inline">
-          · live response ⚡
+          · LLM response ⚡
         </span>
       </div>
       <div className="ml-auto">
@@ -450,7 +450,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
                 <RichMarkdown content={message.content} />
               </div>
             ) : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}
-            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">Server-side response · complete server response</p>}
+            {message.mode === 'model-generated' && <p className="mt-3 text-[11px] text-muted-foreground/80">Server-side LLM response · grounded</p>}
             {message.mode === 'scope' && <p className="mt-3 text-[11px] text-muted-foreground/80">Portfolio-only scope</p>}
             {message.mode === 'error' && <p className="mt-3 text-[11px] text-amber-600 dark:text-amber-400">AI response unavailable</p>}
             {message.notice && <p className="mt-2 text-xs text-muted-foreground">{message.notice}</p>}
@@ -488,7 +488,7 @@ export function PortfolioChat({ onClose }: { onClose?: () => void }) {
           : remoteStatus === 'checking'
             ? 'Checking AI gateway… 🔎'
             : remoteStatus === 'ready'
-              ? 'Server-side assistant · complete response'
+              ? 'Server-side LLM · grounded response'
               : 'Remote AI is offline'}
       </p>
     </div>
