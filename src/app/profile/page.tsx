@@ -1,8 +1,5 @@
-
-'use client';
-
-import { ProfileContent } from '@/components/sections/profile-content';
+import { redirect } from 'next/navigation';
 
 export default function ProfilePage() {
-  return <ProfileContent mode="modal" />;
+  redirect('/home');
 }
