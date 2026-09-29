@@ -28,10 +28,11 @@ jobs:
       - name: Deploy Cloudflare Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare deployment skipped: required GitHub Actions secrets are not configured."
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "Cloudflare deployment skipped: CLOUDFLARE_API_TOKEN is not configured."
             exit 0
           fi
+          echo "Validating Cloudflare API token and inferring the accessible account..."
+          npx wrangler@latest whoami
           npx wrangler@latest deploy --config worker/wrangler.toml

@@ -100,6 +100,9 @@ for (const forbiddenPrompt of [
 }
 
 assert.equal(remoteSource.includes('emitProgressiveTokens'), true, 'non-stream compatibility token reveal missing');
+assert.equal(remoteSource.includes('getPortfolioAICapabilities'), true, 'backend capability detection missing');
+assert.equal(remoteSource.includes('questionForBackend'), true, 'legacy backend scope compatibility policy missing');
+assert.equal(remoteSource.includes('Do not answer the unrelated subject itself.'), true, 'legacy backend scope instruction missing');
 assert.equal(remoteSource.includes("response.headers.get('X-Portfolio-Mode')"), true, 'stream mode metadata handling missing');
 
 console.log(`Portfolio AI policy regression suite passed (${cases.length} intent cases + architecture assertions).`);
