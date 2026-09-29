@@ -27,7 +27,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://checkmyprofolio.github.io',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Accept',
-  'Access-Control-Expose-Headers': 'X-Portfolio-Sources',
+  'Access-Control-Expose-Headers': 'X-Portfolio-Sources, X-Portfolio-Mode',
   'Cache-Control': 'no-cache, no-store, must-revalidate',
   'X-Content-Type-Options': 'nosniff',
 };
@@ -319,7 +319,7 @@ export function classifyRequestScope(question: string): RequestScope {
 
   const explicitPortfolio =
     /\b(?:vidit|shah|profolio|portfolio|meeraai|meera\s*ai|aarnaai|aarna\s*ai|airlearn|aerosynth|infera|omniroute|binance\s+futures|single[- ]pass\s+3d|gemini\s+web2api|ai\s+cctv|youtube\s+music\s+automation)\b/i.test(q) ||
-    /\b(?:his|him)\b/i.test(q) ||
+    /\b(?:he|his|him)\b/i.test(q) ||
     /\b(?:website|site|homepage|page|pages|navigation|navigate|section|sections|dashboard|profile|projects?|contact|links?|social)\b/i.test(q) ||
     /\b(?:this|your|vidit'?s)\s+(?:site|website|page|profile|portfolio|github|repository|repo|projects?|work|skills?|education|degree|career|experience|background|resume|contact)\b/i.test(q);
 
@@ -420,14 +420,14 @@ function publicSourcesForQuestion(question: string, fetched: Source[]): Source[]
   return [...unique.values()].slice(0, 5);
 }
 
-async function auditGeneratedAnswer(
+async function streamAuditedAnswer(
   env: Env,
   scope: RequestScope,
   question: string,
   candidate: string,
   evidence: string,
   maxTokens: number,
-) {
+): Promise<ReadableStream | null> {
   const auditSystem = [
     'You are the final response auditor for Profolio AI.',
     'Return only the final user-facing Markdown answer. Never discuss the audit.',
@@ -445,20 +445,22 @@ async function auditGeneratedAnswer(
     "- out-of-scope: Do not answer the unrelated subject itself. Write a brief natural redirection explaining that Profolio AI focuses on Vidit's portfolio, engineering work, and related technical topics. Do not pretend portfolio sources support the unrelated topic.",
   ].join('\n');
 
-  const audited = await runTextModel(
-    env,
-    [
+  const result = await env.AI.run(MODEL, {
+    messages: [
       { role: 'system', content: auditSystem },
       {
         role: 'user',
         content: ['QUESTION:', question, '', 'CANDIDATE ANSWER:', candidate, '', 'EVIDENCE:', evidence || '[none]'].join('\n'),
       },
     ],
-    maxTokens,
-    0.1,
-  );
+    stream: true,
+    max_tokens: maxTokens,
+    temperature: 0.1,
+    top_p: 0.9,
+    seed: 17,
+  });
 
-  return audited.trim();
+  return result instanceof ReadableStream ? result : null;
 }
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -483,7 +485,7 @@ export default {
         scopeEnforced: true,
         llmGeneratedResponses: true,
         groundingAudit: true,
-        responseFormat: 'complete',
+        responseFormat: 'stream',
       });
     }
 
@@ -638,29 +640,36 @@ ${scopedClientEvidence || '[none]'}`;
         ? ['LIVE GITHUB EVIDENCE:', firstParty.context || '[none]', '', 'PUBLISHED PORTFOLIO EVIDENCE:', scopedClientEvidence || '[none]'].join('\n')
         : '';
 
-      let answer = '';
-      try {
-        answer = await auditGeneratedAnswer(env, scope, question, candidate, auditEvidence, maxTokens);
-      } catch {
-        if (scope === 'portfolio') {
-          return json({ error: 'The grounding audit could not verify the portfolio response.', code: 'GROUNDING_AUDIT_UNAVAILABLE' }, 502);
-        }
-        answer = candidate;
-      }
-
-      if (!answer) {
-        return json({ error: 'The AI service returned an empty audited response.', code: 'EMPTY_AUDITED_RESPONSE' }, 502);
-      }
-
       const sources = scope === 'portfolio'
         ? publicSourcesForQuestion(question, firstParty.sources)
         : [];
 
-      return json({
-        answer,
-        mode: scope === 'out-of-scope' ? 'scope' : 'model-generated',
-        sources,
-        grounding: { scope, audited: true, portfolioEvidenceUsed: scope === 'portfolio' },
+      let auditedStream: ReadableStream | null = null;
+      try {
+        auditedStream = await streamAuditedAnswer(env, scope, question, candidate, auditEvidence, maxTokens);
+      } catch {
+        auditedStream = null;
+      }
+
+      if (!auditedStream) {
+        return json(
+          {
+            error: 'The grounding auditor could not produce a streamed response.',
+            code: 'GROUNDING_STREAM_UNAVAILABLE',
+          },
+          502,
+        );
+      }
+
+      return new Response(auditedStream, {
+        status: 200,
+        headers: {
+          ...CORS_HEADERS,
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'X-Portfolio-Sources': sourceHeader(sources),
+          'X-Portfolio-Mode': scope === 'out-of-scope' ? 'scope' : 'model-generated',
+          'X-Accel-Buffering': 'no',
+        },
       });
     } catch (error) {
       return json(
