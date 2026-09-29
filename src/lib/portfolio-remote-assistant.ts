@@ -114,6 +114,7 @@ function isPortfolioIntent(question: string) {
   if (
     /\b(?:vidit|shah|profolio|portfolio|meeraai|meera\s*ai|aarnaai|aarna\s*ai|airlearn|aerosynth|infera|omniroute|binance\s+futures|single[- ]pass\s+3d|gemini\s+web2api|ai\s+cctv|youtube\s+music\s+automation)\b/i.test(q) ||
     /\b(?:his|him)\b/i.test(q) ||
+    /\b(?:website|site|homepage|page|pages|navigation|navigate|section|sections|dashboard|profile|projects?|contact|links?|social)\b/i.test(q) ||
     /\b(?:this|your|vidit'?s)\s+(?:site|website|page|profile|portfolio|github|repository|repo|projects?|work|skills?|education|degree|career|experience|background|resume|contact)\b/i.test(q)
   ) {
     return true;
@@ -128,6 +129,62 @@ function isPortfolioIntent(question: string) {
 }
 
 type ClientRequestScope = 'portfolio' | 'technical' | 'out-of-scope';
+
+function isProfileSummaryIntent(question: string) {
+  const q = question.trim().toLowerCase();
+  return (
+    /\b(?:tell me about|who is|who's|introduce|describe|give me (?:an )?(?:overview|summary) of)\s+(?:vidit|vidit shah)\b/i.test(q) ||
+    /\b(?:about|profile|background)\s+(?:of\s+)?vidit(?:\s+shah)?\b/i.test(q)
+  );
+}
+
+function profileSummaryAnswer(): RemotePortfolioAnswer {
+  const identity = portfolioFacts.identity;
+  const answer = [
+    '## Vidit Shah 👋',
+    `${identity.name} is a **${identity.title}** whose published portfolio focuses on robotics, AI applications, computer vision, automation, and software engineering.`,
+    '',
+    '### Engineering background 🎓',
+    `- **Degree:** ${identity.degree}`,
+    `- **Institution:** ${identity.institution}`,
+    `- **University:** ${identity.university}`,
+    `- **Graduation:** ${identity.graduation}`,
+    `- **CGPA:** ${identity.cgpa}`,
+    '',
+    '### Focus 🧠',
+    identity.statement,
+  ].join('\n');
+
+  return {
+    answer,
+    mode: 'model-generated',
+    sources: [
+      { url: PORTFOLIO_ORIGIN, title: 'Vidit Shah — published portfolio', kind: 'portfolio' },
+      { url: `${PORTFOLIO_ORIGIN}${PORTFOLIO_ROUTES.profile}`, title: 'Portfolio — Profile', kind: 'portfolio' },
+    ],
+  };
+}
+
+function isSiteOverviewIntent(question: string) {
+  const q = question.trim().toLowerCase();
+  const asksForStructure = /\b(?:sections?|pages?|navigation|menu|site map|sitemap|what(?:'s| is) on|what can i find|what does (?:the )?(?:site|website|portfolio) have)\b/i.test(q);
+  const siteContext = /\b(?:website|site|portfolio|page|pages|sections?|navigation)\b/i.test(q);
+  return asksForStructure && siteContext;
+}
+
+function siteOverviewAnswer(): RemotePortfolioAnswer {
+  const sections = portfolioFacts.navigation
+    .map((item) => `- **[${item.label}](${PORTFOLIO_ORIGIN}${item.path})** — ${item.description}`)
+    .join('\n');
+
+  return {
+    answer: `## Portfolio sections 🧭\n${sections}`,
+    mode: 'model-generated',
+    sources: [
+      { url: PORTFOLIO_ORIGIN, title: 'Vidit Shah — published portfolio', kind: 'portfolio' },
+    ],
+  };
+}
 
 function isRelatedTechnicalIntent(question: string) {
   const q = question.toLowerCase();
@@ -545,6 +602,21 @@ export async function streamPortfolioQuestion(
   }
 
   const identity = portfolioFacts.identity;
+
+  if (isProfileSummaryIntent(trimmed)) {
+    const result = profileSummaryAnswer();
+    emit({ event: 'grounding', data: 'Answered from structured portfolio identity data.' });
+    emit({ event: 'complete', data: 'Profile response ready.' });
+    return result;
+  }
+
+  if (isSiteOverviewIntent(trimmed)) {
+    const result = siteOverviewAnswer();
+    emit({ event: 'grounding', data: 'Answered from structured portfolio navigation data.' });
+    emit({ event: 'complete', data: 'Navigation overview ready.' });
+    return result;
+  }
+
   if (/^(?:hi|hello|hey|heyy|hey there|yo|sup|good morning|good afternoon|good evening)[!.\s]*$/i.test(trimmed)) {
     const answer = 'Hey! 👋 I’m Profolio AI, the assistant for Vidit’s public portfolio. I can help with his projects, engineering work, skills, education, and technical background.';
     emit({ event: 'complete', data: 'Immediate conversational response.' });
