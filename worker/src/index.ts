@@ -339,7 +339,7 @@ export function classifyRequestScope(question: string): RequestScope {
   }
 
   const technical =
-    /\b(?:artificial intelligence|machine learning|deep learning|llm|rag|retrieval[- ]augmented|robotics?|automation|computer vision|control systems?|plc|microcontrollers?|iot|python|typescript|javascript|react|next\.?js|fastapi|electron|api|rest|software engineering|programming|git|github|database|sql|algorithm|data structures?|neural networks?|transformers?|inference|quantization|lora|qlora|gguf|mcp|playwright|web development|cloud|deployment|testing|debugging|cybersecurity)\b/i.test(q) ||
+    /\b(?:artificial intelligence|machine learning|deep learning|llm|rag|retrieval[- ]augmented|robotics?|ros2?|robot operating system|slam|gazebo|rviz|automation|computer vision|opencv|control systems?|plc|microcontrollers?|embedded systems?|esp32|arduino|iot|python|c\+\+|typescript|javascript|react|next\.?js|fastapi|electron|api|rest|software engineering|programming|git|github|database|sql|algorithm|data structures?|neural networks?|transformers?|pytorch|tensorflow|keras|inference|quantization|lora|qlora|gguf|mcp|playwright|web development|cloud|deployment|docker|kubernetes|linux|testing|debugging|cybersecurity)\b/i.test(q) ||
     /\bai\b/i.test(q);
 
   return technical ? 'technical' : 'out-of-scope';
