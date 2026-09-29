@@ -6,7 +6,7 @@ export const PORTFOLIO_AI_ENDPOINT =
   process.env.NEXT_PUBLIC_PORTFOLIO_AI_ENDPOINT ||
   'https://checkmyprofolio-github-io.viditshah5656.workers.dev';
 
-const REQUEST_TIMEOUT_MS = 30000;
+const REQUEST_TIMEOUT_MS = 60000;
 const HEALTH_TIMEOUT_MS = 6000;
 
 export type PortfolioCitation = {
@@ -113,7 +113,7 @@ function isPortfolioIntent(question: string) {
 
   if (
     /\b(?:vidit|shah|profolio|portfolio|meeraai|meera\s*ai|aarnaai|aarna\s*ai|airlearn|aerosynth|infera|omniroute|binance\s+futures|single[- ]pass\s+3d|gemini\s+web2api|ai\s+cctv|youtube\s+music\s+automation)\b/i.test(q) ||
-    /\b(?:his|him)\b/i.test(q) ||
+    /\b(?:he|his|him)\b/i.test(q) ||
     /\b(?:website|site|homepage|page|pages|navigation|navigate|section|sections|dashboard|profile|projects?|contact|links?|social)\b/i.test(q) ||
     /\b(?:this|your|vidit'?s)\s+(?:site|website|page|profile|portfolio|github|repository|repo|projects?|work|skills?|education|degree|career|experience|background|resume|contact)\b/i.test(q)
   ) {
@@ -386,6 +386,16 @@ function normalize(answer: string, question = '') {
   return addRelevantLinks(enrichWithEmojis(sanitizeAssistantLinks(renumbered)), question);
 }
 
+async function emitProgressiveTokens(
+  answer: string,
+  emit: (event: PortfolioStreamEvent) => void,
+) {
+  const pieces = answer.match(/\S+\s*/g) || [answer];
+  for (let index = 0; index < pieces.length; index += 3) {
+    emit({ event: 'token', data: pieces.slice(index, index + 3).join('') });
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 18));
+  }
+}
 async function fetchWithTimeout(
   input: RequestInfo | URL,
   init: RequestInit,
@@ -576,10 +586,17 @@ export async function streamPortfolioQuestion(
       }
     })();
 
+    const modeHeader = response.headers.get('X-Portfolio-Mode');
+    const streamedMode: 'model-generated' | 'scope' = modeHeader === 'scope' ? 'scope' : 'model-generated';
+    for (const source of sourcesFromHeader) {
+      emit({ event: 'citation', data: JSON.stringify(source) });
+    }
+
     if (!response.body || !(response.headers.get('content-type') || '').includes('text/event-stream')) {
       const payload = (await response.json()) as { answer?: unknown; mode?: 'model-generated' | 'scope' | 'error'; notice?: string; sources?: PortfolioCitation[] };
       const answer = typeof payload.answer === 'string' ? normalize(payload.answer, question) : '';
       if (!answer) throw new Error('Remote AI returned an empty response.');
+      await emitProgressiveTokens(answer, emit);
       emit({ event: 'complete', data: 'Response complete.' });
       return {
         answer,
@@ -658,7 +675,7 @@ export async function streamPortfolioQuestion(
 
     return {
       answer,
-      mode: 'model-generated',
+      mode: streamedMode,
       sources: finalSources,
     };
   } catch (error) {
