@@ -377,6 +377,86 @@ function conversationReply(question: string) {
   return "Hey! 👋 I'm Profolio AI, the assistant for Vidit's public portfolio. I can help with his projects, engineering work, skills, education, and related technical topics.";
 }
 
+function parseStructuredEvidence(value: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isProfileSummaryIntent(question: string) {
+  const q = question.trim().toLowerCase();
+  return (
+    /\b(?:tell me about|who is|who's|introduce|describe|give me (?:an )?(?:overview|summary) of)\s+(?:vidit|vidit shah)\b/i.test(q) ||
+    /\b(?:about|profile|background)\s+(?:of\s+)?vidit(?:\s+shah)?\b/i.test(q)
+  );
+}
+
+function isSiteOverviewIntent(question: string) {
+  const q = question.trim().toLowerCase();
+  const asksForStructure = /\b(?:sections?|pages?|navigation|menu|site map|sitemap|what(?:'s| is) on|what can i find|what does (?:the )?(?:site|website|portfolio) have)\b/i.test(q);
+  const siteContext = /\b(?:website|site|portfolio|page|pages|sections?|navigation)\b/i.test(q);
+  return asksForStructure && siteContext;
+}
+
+function stringField(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function structuredProfileAnswer(evidence: Record<string, unknown> | null) {
+  const identity = evidence?.identity;
+  if (!identity || typeof identity !== 'object' || Array.isArray(identity)) return '';
+  const record = identity as Record<string, unknown>;
+  const name = stringField(record.name);
+  const title = stringField(record.title);
+  const statement = stringField(record.statement);
+  const degree = stringField(record.degree);
+  const institution = stringField(record.institution);
+  const university = stringField(record.university);
+  const graduation = stringField(record.graduation);
+  const cgpa = stringField(record.cgpa);
+  if (!name || !title) return '';
+
+  return [
+    `## ${name} 👋`,
+    `${name} is a **${title}** whose published portfolio focuses on robotics, AI applications, computer vision, automation, and software engineering.`,
+    '',
+    '### Engineering background 🎓',
+    degree ? `- **Degree:** ${degree}` : '',
+    institution ? `- **Institution:** ${institution}` : '',
+    university ? `- **University:** ${university}` : '',
+    graduation ? `- **Graduation:** ${graduation}` : '',
+    cgpa ? `- **CGPA:** ${cgpa}` : '',
+    statement ? '' : '',
+    statement ? '### Focus 🧠' : '',
+    statement,
+  ].filter(Boolean).join('\n');
+}
+
+function structuredSiteOverviewAnswer(evidence: Record<string, unknown> | null) {
+  const site = evidence?.site;
+  if (!site || typeof site !== 'object' || Array.isArray(site)) return '';
+  const navigation = (site as Record<string, unknown>).navigation;
+  if (!Array.isArray(navigation)) return '';
+
+  const lines = navigation.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    const label = stringField(record.label);
+    const path = stringField(record.path);
+    const description = stringField(record.description);
+    if (!label || !path) return [];
+    const url = new URL(path, 'https://checkmyprofolio.github.io').toString();
+    return [`- **[${label}](${url})**${description ? ` — ${description}` : ''}`];
+  });
+
+  return lines.length ? `## Portfolio sections 🧭\n${lines.join('\n')}` : '';
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') {
@@ -456,6 +536,35 @@ export default {
           mode: 'model-generated',
           sources: [],
         });
+      }
+
+      const structuredEvidence = parseStructuredEvidence(clientEvidence);
+
+      if (scope === 'portfolio' && isProfileSummaryIntent(question)) {
+        const answer = structuredProfileAnswer(structuredEvidence);
+        if (answer) {
+          return json({
+            answer,
+            mode: 'model-generated',
+            sources: [
+              { url: 'https://checkmyprofolio.github.io/', title: 'Vidit Shah — published portfolio', kind: 'portfolio' as const },
+              { url: 'https://checkmyprofolio.github.io/profile', title: 'Portfolio — Profile', kind: 'portfolio' as const },
+            ],
+          });
+        }
+      }
+
+      if (scope === 'portfolio' && isSiteOverviewIntent(question)) {
+        const answer = structuredSiteOverviewAnswer(structuredEvidence);
+        if (answer) {
+          return json({
+            answer,
+            mode: 'model-generated',
+            sources: [
+              { url: 'https://checkmyprofolio.github.io/', title: 'Vidit Shah — published portfolio', kind: 'portfolio' as const },
+            ],
+          });
+        }
       }
 
       const firstPartyQuestion = scope === 'portfolio';
