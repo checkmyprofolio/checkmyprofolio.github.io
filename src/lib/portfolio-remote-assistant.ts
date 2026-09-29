@@ -130,62 +130,6 @@ function isPortfolioIntent(question: string) {
 
 type ClientRequestScope = 'portfolio' | 'technical' | 'out-of-scope';
 
-function isProfileSummaryIntent(question: string) {
-  const q = question.trim().toLowerCase();
-  return (
-    /\b(?:tell me about|who is|who's|introduce|describe|give me (?:an )?(?:overview|summary) of)\s+(?:vidit|vidit shah)\b/i.test(q) ||
-    /\b(?:about|profile|background)\s+(?:of\s+)?vidit(?:\s+shah)?\b/i.test(q)
-  );
-}
-
-function profileSummaryAnswer(): RemotePortfolioAnswer {
-  const identity = portfolioFacts.identity;
-  const answer = [
-    '## Vidit Shah 👋',
-    `${identity.name} is a **${identity.title}** whose published portfolio focuses on robotics, AI applications, computer vision, automation, and software engineering.`,
-    '',
-    '### Engineering background 🎓',
-    `- **Degree:** ${identity.degree}`,
-    `- **Institution:** ${identity.institution}`,
-    `- **University:** ${identity.university}`,
-    `- **Graduation:** ${identity.graduation}`,
-    `- **CGPA:** ${identity.cgpa}`,
-    '',
-    '### Focus 🧠',
-    identity.statement,
-  ].join('\n');
-
-  return {
-    answer,
-    mode: 'model-generated',
-    sources: [
-      { url: PORTFOLIO_ORIGIN, title: 'Vidit Shah — published portfolio', kind: 'portfolio' },
-      { url: `${PORTFOLIO_ORIGIN}${PORTFOLIO_ROUTES.profile}`, title: 'Portfolio — Profile', kind: 'portfolio' },
-    ],
-  };
-}
-
-function isSiteOverviewIntent(question: string) {
-  const q = question.trim().toLowerCase();
-  const asksForStructure = /\b(?:sections?|pages?|navigation|menu|site map|sitemap|what(?:'s| is) on|what can i find|what does (?:the )?(?:site|website|portfolio) have)\b/i.test(q);
-  const siteContext = /\b(?:website|site|portfolio|page|pages|sections?|navigation)\b/i.test(q);
-  return asksForStructure && siteContext;
-}
-
-function siteOverviewAnswer(): RemotePortfolioAnswer {
-  const sections = portfolioFacts.navigation
-    .map((item) => `- **[${item.label}](${PORTFOLIO_ORIGIN}${item.path})** — ${item.description}`)
-    .join('\n');
-
-  return {
-    answer: `## Portfolio sections 🧭\n${sections}`,
-    mode: 'model-generated',
-    sources: [
-      { url: PORTFOLIO_ORIGIN, title: 'Vidit Shah — published portfolio', kind: 'portfolio' },
-    ],
-  };
-}
-
 function isRelatedTechnicalIntent(question: string) {
   const q = question.toLowerCase();
   return (
@@ -198,18 +142,6 @@ function classifyClientRequestScope(question: string): ClientRequestScope {
   if (isPortfolioIntent(question)) return 'portfolio';
   if (isRelatedTechnicalIntent(question)) return 'technical';
   return 'out-of-scope';
-}
-
-function sanitizeTechnicalAnswer(answer: string) {
-  const cleaned = answer
-    .split('\n')
-    .filter((line) => !/\b(?:vidit|shah|he|his|him)\b/i.test(line))
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
-  return cleaned ||
-    "I can explain this technical topic generally, but I won't attach unsupported personal claims to the portfolio owner.";
 }
 
 function defaultSources(question: string): PortfolioCitation[] {
@@ -566,7 +498,7 @@ export async function checkPortfolioAI(): Promise<boolean> {
     return (
       data.ok === true &&
       data.firstPartySources === true &&
-      data.responseFormat === 'stream'
+      (data.responseFormat === 'stream' || data.responseFormat === 'complete')
     );
   } catch {
     return false;
@@ -574,85 +506,23 @@ export async function checkPortfolioAI(): Promise<boolean> {
 }
 
 
-function isRuntimePrivacyQuestion(question: string) {
-  return /\b(?:what(?:'s| is)?\s+(?:your|the)\s+(?:model|llm|backend|provider|runtime|engine|stack)|which\s+(?:model|llm|provider|engine)|what\s+(?:model|llm|provider)\s+do\s+you\s+use|what\s+(?:powers|runs|drives)\s+you\s+(?:on|with)|what\s+(?:are|is)\s+your\s+(?:backend|model|provider)|what\s+(?:powers|runs|drives)\s+(?:this|the)\s+(?:chat|assistant|portfolio\s+ai)|which\s+model\s+powers\s+you|are\s+you\s+(?:llama|gpt|gemma|mistral)|underlying\s+(?:model|llm|provider|backend)|backend\s+model|backend\s+stack|model\s+name|tell\s+me\s+(?:your|the)\s+(?:model|backend|provider|runtime))\b/i.test(
-    question,
-  );
-}
-
-function runtimePrivacyAnswer(): RemotePortfolioAnswer {
-  return {
-    answer:
-      "## Profolio AI privacy 🔒\nI keep my underlying model, provider, and backend implementation details private. I can explain my capabilities and the information available in Vidit's public portfolio, but I do not expose the runtime technology behind this assistant.",
-    mode: 'scope',
-    sources: [],
-  };
-}
-
 export async function streamPortfolioQuestion(
   question: string,
   emit: (event: PortfolioStreamEvent) => void,
   history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
 ): Promise<RemotePortfolioAnswer> {
   const fallbackSources = defaultSources(question);
-  const trimmed = question.trim();
+  const requestScope = classifyClientRequestScope(question.trim());
 
-  if (isRuntimePrivacyQuestion(trimmed)) {
-    return runtimePrivacyAnswer();
-  }
-
-  const identity = portfolioFacts.identity;
-
-  if (isProfileSummaryIntent(trimmed)) {
-    const result = profileSummaryAnswer();
-    emit({ event: 'grounding', data: 'Answered from structured portfolio identity data.' });
-    emit({ event: 'complete', data: 'Profile response ready.' });
-    return result;
-  }
-
-  if (isSiteOverviewIntent(trimmed)) {
-    const result = siteOverviewAnswer();
-    emit({ event: 'grounding', data: 'Answered from structured portfolio navigation data.' });
-    emit({ event: 'complete', data: 'Navigation overview ready.' });
-    return result;
-  }
-
-  if (/^(?:hi|hello|hey|heyy|hey there|yo|sup|good morning|good afternoon|good evening)[!.\s]*$/i.test(trimmed)) {
-    const answer = 'Hey! 👋 I’m Profolio AI, the assistant for Vidit’s public portfolio. I can help with his projects, engineering work, skills, education, and technical background.';
-    emit({ event: 'complete', data: 'Immediate conversational response.' });
-    return { answer, mode: 'model-generated', sources: [] };
-  }
-
-  if (/^(?:thanks|thank you|thx|ty|got it|okay|ok|cool|nice|great|perfect)[!.\s]*$/i.test(trimmed)) {
-    const answer = /^(?:thanks|thank you|thx|ty)/i.test(trimmed)
-      ? 'You’re welcome. Glad that helped.'
-      : 'Got it.';
-    emit({ event: 'complete', data: 'Immediate conversational response.' });
-    return { answer, mode: 'model-generated', sources: [] };
-  }
-
-  if (
-    /\b(?:birth date|birthdate|birthday|date of birth|dob)\b/i.test(trimmed) &&
-    !Object.prototype.hasOwnProperty.call(identity, 'birthDate') &&
-    !Object.prototype.hasOwnProperty.call(identity, 'dateOfBirth')
-  ) {
-    const answer = '### Personal detail\nI don’t have Vidit’s birth date in the published portfolio or GitHub sources, so I don’t want to guess.';
-    emit({ event: 'complete', data: 'Unsupported personal detail declined.' });
-    return { answer, mode: 'model-generated', sources: fallbackSources };
-  }
-
-  const requestScope = classifyClientRequestScope(trimmed);
-  if (requestScope === 'out-of-scope') {
-    const answer =
-      "## Portfolio scope 🧭\nProfolio AI is focused on Vidit Shah's published portfolio, projects, engineering work, and related technical topics. I don't use general model knowledge for unrelated subjects.";
-    emit({ event: 'scope', data: 'Rejected: outside portfolio and related technical scope.' });
-    emit({ event: 'complete', data: 'Scope response ready.' });
-    return { answer, mode: 'scope', sources: [] };
-  }
-
-  emit({ event: 'scope', data: requestScope === 'portfolio' ? 'Portfolio request accepted.' : 'Related technical request accepted.' });
-  emit({ event: 'retrieval', data: 'Preparing the appropriate response…' });
-
+  emit({
+    event: 'scope',
+    data: requestScope === 'portfolio'
+      ? 'Portfolio evidence selected.'
+      : requestScope === 'technical'
+        ? 'General technical mode selected.'
+        : 'General conversational scope selected.',
+  });
+  emit({ event: 'retrieval', data: 'Sending the request to the server-side LLM…' });
   try {
     const response = await fetchWithTimeout(
       PORTFOLIO_AI_ENDPOINT,
@@ -665,6 +535,7 @@ export async function streamPortfolioQuestion(
         body: JSON.stringify({
           question,
           evidence: requestScope === 'portfolio' ? evidence(question) : '',
+          scopeHint: requestScope,
           history: history.slice(-2),
           source: 'checkmyprofolio.github.io',
         }),
@@ -707,21 +578,18 @@ export async function streamPortfolioQuestion(
 
     if (!response.body || !(response.headers.get('content-type') || '').includes('text/event-stream')) {
       const payload = (await response.json()) as { answer?: unknown; mode?: 'model-generated' | 'scope' | 'error'; notice?: string; sources?: PortfolioCitation[] };
-      const normalized = typeof payload.answer === 'string' ? normalize(payload.answer, question) : '';
-      const answer = requestScope === 'technical' ? sanitizeTechnicalAnswer(normalized) : normalized;
+      const answer = typeof payload.answer === 'string' ? normalize(payload.answer, question) : '';
       if (!answer) throw new Error('Remote AI returned an empty response.');
       emit({ event: 'complete', data: 'Response complete.' });
       return {
         answer,
         mode: payload.mode || 'model-generated',
         notice: payload.notice,
-        sources: requestScope === 'technical'
-          ? []
-          : Array.isArray(payload.sources)
-            ? payload.sources
-            : sourceHeaderPresent
-              ? sourcesFromHeader
-              : fallbackSources,
+        sources: Array.isArray(payload.sources)
+          ? payload.sources
+          : requestScope === 'portfolio'
+            ? (sourceHeaderPresent ? sourcesFromHeader : fallbackSources)
+            : [],
       };
     }
 
@@ -770,16 +638,15 @@ export async function streamPortfolioQuestion(
 
     if (buffer.trim()) processFrame(buffer);
 
-    const normalized = normalize(fullAnswer, question);
-    const answer = requestScope === 'technical' ? sanitizeTechnicalAnswer(normalized) : normalized;
+    const answer = normalize(fullAnswer, question);
     if (!answer) throw new Error('Remote AI returned an empty response.');
-    const finalSources = requestScope === 'technical'
-      ? []
-      : citations.size
+    const finalSources = requestScope === 'portfolio'
+      ? citations.size
         ? [...citations.values()]
         : sourceHeaderPresent
           ? sourcesFromHeader
-          : fallbackSources;
+          : fallbackSources
+      : [];
 
     emit({
       event: 'grounding',
