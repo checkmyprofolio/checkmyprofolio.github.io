@@ -141,7 +141,7 @@ export function ProjectsSection() {
                         src={project.image.imageUrl}
                         alt={project.image.description}
                         fill
-                        className="scale-[1.1] object-cover opacity-35 blur-[30px] saturate-[1.15] transition-all duration-700 ease-out group-hover:scale-[1.16] group-hover:opacity-45"
+                        className="scale-[1.1] object-cover opacity-[0.35] blur-[30px] saturate-[1.15] transition-all duration-700 ease-out group-hover:scale-[1.16] group-hover:opacity-45"
                         sizes="(max-width: 1023px) 100vw, 50vw"
                         priority={index < 2}
                         data-ai-hint={project.image.imageHint}
