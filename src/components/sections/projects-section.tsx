@@ -36,6 +36,7 @@ type ComingSoonState = {
 export function ProjectsSection() {
   const router = useRouter();
   const [comingSoonState, setComingSoonState] = useState<ComingSoonState>(null);
+  const [meeraDetailsOpen, setMeeraDetailsOpen] = useState(false);
 
   const handleProjectOpen = (project: Project) => {
     if (project.internalHref) {
@@ -96,7 +97,7 @@ export function ProjectsSection() {
                   viewport={{ once: true, amount: 0.16 }}
                   transition={{ duration: 0.5, ease: 'easeOut', delay: index * 0.05 }}
                   whileHover={{ y: -8 }}
-                  className="group relative h-fit min-h-[30rem] self-start overflow-hidden rounded-[2rem] border border-white/12 bg-slate-950/70"
+                  className="group relative h-[32rem] self-start overflow-hidden rounded-[2rem] border border-white/12 bg-slate-950/70"
                   style={{ boxShadow: `0 36px 110px -70px ${project.glow}` }}
                 >
                   <div className="absolute inset-0 opacity-95" style={{ backgroundImage: project.backdrop }} />
@@ -122,7 +123,7 @@ export function ProjectsSection() {
                   <div className="absolute inset-0 rounded-[inherit] border border-white/8" />
 
                   <div className="relative p-4 sm:p-5">
-                    <div className="flex min-h-[calc(30rem-2rem)] flex-col justify-between rounded-[1.65rem] border border-white/10 bg-slate-950/28 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[24px] sm:p-7">
+                    <div className="flex h-full min-h-0 flex-col justify-between rounded-[1.65rem] border border-white/10 bg-slate-950/28 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[24px] sm:p-7">
                       <div className="flex items-start justify-between gap-4">
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-slate-100 backdrop-blur-xl">
                           {project.eyebrow}
@@ -140,20 +141,17 @@ export function ProjectsSection() {
                           <p className="mt-4 max-w-lg text-sm leading-7 text-slate-200/92 sm:text-[0.98rem]">
                             {project.description}
                           </p>
-                          {project.internalHref === '/meeraai' && <details className="mt-5 rounded-2xl border border-sky-300/20 bg-sky-400/[0.05] text-sm text-slate-200">
-                            <summary className="cursor-pointer rounded-2xl px-4 py-3 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-sky-300">Current models, browser, and tested workflows</summary>
-                            <div className="max-h-[24rem] space-y-5 overflow-y-auto overscroll-contain px-4 pb-5 pr-3 leading-7">
-                              <p>{meeraSummary.approach}</p>
-                              <div><h4 className="font-semibold text-white">The seven local profiles</h4><ul className="mt-2 space-y-2">
-                                {meeraModels.map(model=><li key={model.id}><strong>{model.name}</strong>: {model.model} / {model.parameters} / {model.quantization}{model.studioAlias ? ` (Model Studio: ${model.studioAlias})` : ''}</li>)}
-                              </ul></div>
-                              <p>{meeraSummary.architecture}</p>
-                              <div><h4 className="font-semibold text-white">What is implemented</h4><ul className="mt-2 space-y-2">{meeraCapabilities.map(item=><li key={item.title}><strong>{item.title}</strong><span className="block text-xs text-sky-200">{item.status}</span></li>)}</ul></div>
-                              <div className="grid gap-3 sm:grid-cols-2">{['app','browser'].map(slot=><figure key={slot}><Image src={`/meeraai/screenshots/${slot === 'app' ? 'workspace' : 'browser-page'}.png`} width={1440} height={900} alt={`MeeraAI ${slot} screenshot supplied by Vidit`} className="rounded-xl border border-white/10"/><figcaption className="mt-2 text-xs text-slate-400">{slot === 'app' ? 'Desktop app' : 'Meera Browser'}  / current app screenshot.</figcaption></figure>)}</div>
-                              <div><h4 className="font-semibold text-white">Test evidence</h4><p className="mt-2">{meeraSummary.evidence}</p></div>
-                              <div><h4 className="font-semibold text-white">Current limitations</h4><p className="mt-2">{meeraSummary.limitations}</p></div>
-                            </div>
-                          </details>}
+                          {project.internalHref === '/meeraai' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-5 rounded-full border-sky-300/25 bg-sky-400/[0.06] text-sky-100 hover:bg-sky-400/15 hover:text-white"
+                              onClick={() => setMeeraDetailsOpen(true)}
+                            >
+                              Technical details
+                              <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
 
                         <div className="mt-5 flex flex-wrap gap-2">
@@ -195,6 +193,71 @@ export function ProjectsSection() {
           </div>
         </div>
       </section>
+
+
+      <Dialog open={meeraDetailsOpen} onOpenChange={setMeeraDetailsOpen}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto border-white/10 bg-slate-950/95 text-white sm:max-w-4xl">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-2xl font-semibold tracking-tight text-white">
+              MeeraAI — technical overview
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-7 text-slate-300">
+              Local models, application architecture, implemented capabilities, test evidence, and current limitations.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-2 text-sm leading-7 text-slate-200">
+            <p>{meeraSummary.approach}</p>
+            <section>
+              <h3 className="font-semibold text-white">The seven local profiles</h3>
+              <ul className="mt-2 space-y-2">
+                {meeraModels.map(model => (
+                  <li key={model.id}>
+                    <strong>{model.name}</strong>: {model.model} / {model.parameters} / {model.quantization}{model.studioAlias ? ` (Model Studio: ${model.studioAlias})` : ''}
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <section>
+              <h3 className="font-semibold text-white">Architecture</h3>
+              <p className="mt-2">{meeraSummary.architecture}</p>
+            </section>
+            <section>
+              <h3 className="font-semibold text-white">What is implemented</h3>
+              <ul className="mt-2 space-y-2">
+                {meeraCapabilities.map(item => (
+                  <li key={item.title}>
+                    <strong>{item.title}</strong>
+                    <span className="block text-xs text-sky-200">{item.status}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <figure>
+                <Image src="/meeraai/screenshots/workspace.png" width={1440} height={900} alt="MeeraAI desktop workspace" className="rounded-xl border border-white/10" />
+                <figcaption className="mt-2 text-xs text-slate-400">MeeraAI desktop app</figcaption>
+              </figure>
+              <figure>
+                <Image src="/meeraai/screenshots/browser-page.png" width={1440} height={900} alt="Meera Browser page" className="rounded-xl border border-white/10" />
+                <figcaption className="mt-2 text-xs text-slate-400">Meera Browser</figcaption>
+              </figure>
+            </div>
+            <section>
+              <h3 className="font-semibold text-white">Test evidence</h3>
+              <p className="mt-2">{meeraSummary.evidence}</p>
+            </section>
+            <section>
+              <h3 className="font-semibold text-white">Current limitations</h3>
+              <p className="mt-2">{meeraSummary.limitations}</p>
+            </section>
+          </div>
+          <DialogFooter>
+            <Button size="lg" className="rounded-full px-6" onClick={() => setMeeraDetailsOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={Boolean(comingSoonState)} onOpenChange={(open) => !open && setComingSoonState(null)}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto border-white/10 bg-slate-950/90 text-white sm:max-w-3xl">
