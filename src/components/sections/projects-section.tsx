@@ -3,7 +3,7 @@
 import { MeeraImage as Image } from '@/components/shared/meera-image';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, Clock3, Github } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Clock3, Github, Layers3, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 import { projects, type Project } from '@/lib/data';
@@ -76,18 +76,52 @@ export function ProjectsSection() {
         </div>
 
         <div className="mx-auto max-w-[96rem] px-4 sm:px-6 lg:px-8">
-          <AnimatedDiv className="mx-auto max-w-3xl text-center">
-            <h2 className="mt-6 font-headline text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
-              Project Index
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-slate-300 sm:text-base">
-              Local AI, software systems, and API experimentation. Each project describes its implementation and the evidence available for it.
-            </p>
+          <AnimatedDiv className="mb-12 flex flex-col justify-between gap-7 border-b border-white/10 pb-9 lg:flex-row lg:items-end">
+            <div className="flex items-start gap-4 sm:gap-5">
+              <span className="mt-1 grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/25 bg-primary/[0.08] font-mono text-sm font-semibold text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                01
+              </span>
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-[0.64rem] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.7)]" />
+                  Portfolio / Selected work
+                </p>
+                <h2 className="mt-2 font-headline text-4xl font-semibold tracking-[-0.045em] text-white sm:text-5xl">
+                  Project <span className="underline-gradient">Index.</span>
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
+                  A collection of engineering work across local AI, robotics, computer vision, and software systems.
+                </p>
+              </div>
+            </div>
+
+            <div className="glass-strong flex w-fit items-center gap-3 rounded-[1.4rem] border border-white/10 bg-white/[0.045] px-4 py-3 shadow-[0_16px_40px_-28px_rgba(2,6,23,0.9)]">
+              <span className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.06] text-primary">
+                <Layers3 className="h-[18px] w-[18px]" />
+              </span>
+              <span>
+                <span className="block text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-slate-500">Selected work</span>
+                <span className="mt-0.5 block font-headline text-lg font-semibold text-white">
+                  {String(projects.length).padStart(2, '0')} <span className="text-xs font-medium text-slate-400">projects</span>
+                </span>
+              </span>
+            </div>
           </AnimatedDiv>
 
-          <div className="mt-14 grid items-start gap-6 lg:grid-cols-2">
+          <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-7">
             {projects.map((project, index) => {
               const live = isProjectLive(project);
+              const categoryLabel = project.eyebrow.replace(/^\\d+\\s\\/\\s/, '');
+              const statusLabel = project.status.includes('Public source available')
+                ? 'Public source'
+                : project.status.startsWith('Local source reviewed')
+                  ? 'Source reviewed'
+                  : 'Project brief';
+              const statusTone = statusLabel === 'Public source'
+                ? 'bg-emerald-400/10 text-emerald-200'
+                : statusLabel === 'Source reviewed'
+                  ? 'bg-sky-400/10 text-sky-200'
+                  : 'bg-white/[0.06] text-slate-300';
 
               return (
                 <motion.article
@@ -95,10 +129,10 @@ export function ProjectsSection() {
                   initial={{ opacity: 0, y: 26 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.16 }}
-                  transition={{ duration: 0.5, ease: 'easeOut', delay: index * 0.05 }}
-                  whileHover={{ y: -8 }}
-                  className="group relative h-[32rem] self-start overflow-hidden rounded-[2rem] border border-white/12 bg-slate-950/70"
-                  style={{ boxShadow: `0 36px 110px -70px ${project.glow}` }}
+                  transition={{ duration: 0.55, ease: 'easeOut', delay: index * 0.045 }}
+                  whileHover={{ y: -5 }}
+                  className="group relative h-[32rem] self-start overflow-hidden rounded-[2.25rem] border border-white/[0.11] bg-slate-950/80 shadow-[0_28px_80px_-48px_rgba(2,6,23,0.9)] transition-[border-color,box-shadow] duration-500 hover:border-sky-300/25 hover:shadow-[0_34px_90px_-48px_rgba(56,189,248,0.18)]"
+                  style={{ boxShadow: `0 28px 90px -60px ${project.glow}` }}
                 >
                   <div className="absolute inset-0 opacity-95" style={{ backgroundImage: project.backdrop }} />
                   {project.image ? (
@@ -107,83 +141,92 @@ export function ProjectsSection() {
                         src={project.image.imageUrl}
                         alt={project.image.description}
                         fill
-                        className="scale-[1.12] object-cover blur-[24px] saturate-[1.12] transition-all duration-700 ease-out group-hover:scale-[1.18] group-hover:blur-[28px]"
+                        className="scale-[1.1] object-cover opacity-35 blur-[30px] saturate-[1.15] transition-all duration-700 ease-out group-hover:scale-[1.16] group-hover:opacity-45"
                         sizes="(max-width: 1023px) 100vw, 50vw"
                         priority={index < 2}
                         data-ai-hint={project.image.imageHint}
                       />
-                      <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-[8px]" />
+                      <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[10px]" />
                     </>
                   ) : null}
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.14),rgba(2,6,23,0.4)_42%,rgba(2,6,23,0.9))]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(15,23,42,0.66),rgba(2,6,23,0.82)_48%,rgba(2,6,23,0.97))]" />
                   <div
                     className="absolute inset-0 opacity-70 transition-opacity duration-500 group-hover:opacity-100"
                     style={{ background: `radial-gradient(circle at top, ${project.glow}, transparent 34%)` }}
                   />
-                  <div className="absolute inset-0 rounded-[inherit] border border-white/8" />
+                  <div className="absolute inset-[1px] rounded-[calc(2.25rem-1px)] border border-white/[0.055]" />
 
-                  <div className="relative h-full p-4 sm:p-5">
-                    <div className="flex h-full min-h-0 flex-col justify-between rounded-[1.65rem] border border-white/10 bg-slate-950/28 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[24px] sm:p-7">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-slate-100 backdrop-blur-xl">
-                          {project.eyebrow}
+                  <div className="relative h-full p-3 sm:p-4">
+                    <div className="flex h-full min-h-0 flex-col rounded-[1.9rem] border border-white/[0.09] bg-slate-950/[0.42] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] backdrop-blur-[30px] sm:p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.055] font-mono text-xs font-semibold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-slate-500">PROJECT / {String(index + 1).padStart(2, '0')}</p>
+                            <p className="mt-1 truncate text-[0.62rem] font-medium uppercase tracking-[0.13em] text-slate-300">{categoryLabel}</p>
+                          </div>
                         </div>
-                        <div className="rounded-full border border-white/12 bg-white/[0.08] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-slate-100 backdrop-blur-xl">
-                          {project.status}
-                        </div>
+                        <span className={`inline-flex shrink-0 items-center gap-2 rounded-full border border-white/[0.09] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.04em] backdrop-blur-xl ${statusTone}`}>
+                          <span className="h-1.5 w-1.5 rounded-full bg-current shadow-[0_0_9px_currentColor]" />
+                          {statusLabel}
+                        </span>
                       </div>
 
-                      <div className="mt-auto">
-                        <div className="max-w-xl">
-                          <h3 className="text-3xl font-semibold tracking-tight text-white sm:text-[2.1rem]">
+                      <div className="mt-auto min-h-0 pt-7">
+                        <div className="min-h-[8.25rem]">
+                          <h3 className="font-headline text-[1.7rem] font-semibold leading-[1.12] tracking-[-0.035em] text-white sm:text-[1.95rem] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
                             {project.title}
                           </h3>
-                          <p className="mt-4 max-w-lg text-sm leading-7 text-slate-200/92 sm:text-[0.98rem]">
+                          <p className="mt-3 max-w-xl overflow-hidden text-sm leading-6 text-slate-300 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
                             {project.description}
                           </p>
-                          {project.internalHref === '/meeraai' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="mt-5 rounded-full border-sky-300/25 bg-sky-400/[0.06] text-sky-100 hover:bg-sky-400/15 hover:text-white"
-                              onClick={() => setMeeraDetailsOpen(true)}
-                            >
-                              Technical details
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                          )}
                         </div>
 
-                        <div className="mt-5 flex flex-wrap gap-2">
+                        {project.internalHref === '/meeraai' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-4 rounded-full border-sky-300/20 bg-sky-300/[0.055] px-4 text-xs text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl transition-all hover:border-sky-200/35 hover:bg-sky-300/10 hover:text-white"
+                            onClick={() => setMeeraDetailsOpen(true)}
+                          >
+                            <Sparkles className="mr-2 h-3.5 w-3.5" />
+                            Technical overview
+                            <ArrowUpRight className="ml-2 h-3.5 w-3.5" />
+                          </Button>
+                        )}
+
+                        <div className="mt-5 flex min-h-7 flex-wrap gap-2">
                           {project.tags.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
-                              className="rounded-full border border-white/12 bg-white/[0.08] px-3 py-1 text-xs font-medium text-slate-100 backdrop-blur-lg"
+                              className="rounded-full border border-white/[0.09] bg-white/[0.045] px-3 py-1 text-[0.66rem] font-medium text-slate-300 backdrop-blur-xl"
                             >
                               {tag}
                             </span>
                           ))}
                         </div>
+                      </div>
 
-                        <div className="mt-6 flex flex-wrap items-center gap-3">
-                          <Button
-                            size="lg"
-                            className="rounded-full px-6 transition-transform duration-300 group-hover:-translate-y-0.5"
-                            onClick={() => handleProjectOpen(project)}
-                          >
-                            {live ? (project.ctaLabel || 'Open Project') : 'View Project'}
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="lg"
-                            className="rounded-full border-white/15 bg-white/[0.08] px-6 text-white backdrop-blur-lg hover:bg-white/12 hover:text-white"
-                            onClick={() => handleSourceOpen(project)}
-                          >
-                            <Github className="h-4 w-4" />
-                            {hasExternalLink(project.githubUrl) ? 'GitHub' : 'Source'}
-                          </Button>
-                        </div>
+                      <div className="mt-5 flex items-center gap-2 border-t border-white/[0.09] pt-4">
+                        <Button
+                          size="lg"
+                          className="h-11 rounded-full px-5 text-xs font-semibold shadow-[0_10px_28px_-16px_rgba(59,130,246,0.85)] transition-all duration-300 hover:-translate-y-0.5"
+                          onClick={() => handleProjectOpen(project)}
+                        >
+                          {live ? (project.ctaLabel || 'Open project') : 'View project'}
+                          <ArrowUpRight className="ml-2 h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="h-11 rounded-full border-white/[0.12] bg-white/[0.045] px-5 text-xs font-semibold text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl transition-all hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
+                          onClick={() => handleSourceOpen(project)}
+                        >
+                          <Github className="mr-2 h-4 w-4" />
+                          {hasExternalLink(project.githubUrl) ? 'Source' : 'Details'}
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -196,7 +239,7 @@ export function ProjectsSection() {
 
 
       <Dialog open={meeraDetailsOpen} onOpenChange={setMeeraDetailsOpen}>
-        <DialogContent className="max-h-[85dvh] overflow-y-auto border-white/10 bg-slate-950/95 text-white sm:max-w-4xl">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/90 text-white shadow-[0_35px_100px_-35px_rgba(2,6,23,0.9)] backdrop-blur-3xl sm:max-w-4xl">
           <DialogHeader className="text-left">
             <DialogTitle className="text-2xl font-semibold tracking-tight text-white">
               MeeraAI — technical overview
@@ -205,8 +248,8 @@ export function ProjectsSection() {
               Local models, application architecture, implemented capabilities, test evidence, and current limitations.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-2 text-sm leading-7 text-slate-200">
-            <p>{meeraSummary.approach}</p>
+          <div className="space-y-5 py-2 text-sm leading-7 text-slate-200">
+            <p className="rounded-[1.5rem] border border-white/[0.09] bg-white/[0.035] p-5 text-slate-300">{meeraSummary.approach}</p>
             <section>
               <h3 className="font-semibold text-white">The seven local profiles</h3>
               <ul className="mt-2 space-y-2">
@@ -234,11 +277,11 @@ export function ProjectsSection() {
             </section>
             <div className="grid gap-4 sm:grid-cols-2">
               <figure>
-                <Image src="/meeraai/screenshots/workspace.png" width={1440} height={900} alt="MeeraAI desktop workspace" className="rounded-xl border border-white/10" />
+                <Image src="/meeraai/screenshots/workspace.png" width={1440} height={900} alt="MeeraAI desktop workspace" className="rounded-[1.35rem] border border-white/10 shadow-lg shadow-black/20" />
                 <figcaption className="mt-2 text-xs text-slate-400">MeeraAI desktop app</figcaption>
               </figure>
               <figure>
-                <Image src="/meeraai/screenshots/browser-page.png" width={1440} height={900} alt="Meera Browser page" className="rounded-xl border border-white/10" />
+                <Image src="/meeraai/screenshots/browser-page.png" width={1440} height={900} alt="Meera Browser page" className="rounded-[1.35rem] border border-white/10 shadow-lg shadow-black/20" />
                 <figcaption className="mt-2 text-xs text-slate-400">Meera Browser</figcaption>
               </figure>
             </div>
@@ -260,7 +303,7 @@ export function ProjectsSection() {
       </Dialog>
 
       <Dialog open={Boolean(comingSoonState)} onOpenChange={(open) => !open && setComingSoonState(null)}>
-        <DialogContent className="max-h-[85dvh] overflow-y-auto border-white/10 bg-slate-950/90 text-white sm:max-w-3xl">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto rounded-[2rem] border border-white/10 bg-slate-950/90 text-white shadow-[0_35px_100px_-35px_rgba(2,6,23,0.9)] backdrop-blur-3xl sm:max-w-3xl">
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.22),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.2),rgba(2,6,23,0.92))]" />
             <div className="absolute right-[-3rem] top-[-2rem] h-32 w-32 rounded-full bg-sky-400/20 blur-3xl" />
