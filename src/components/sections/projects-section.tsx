@@ -3,7 +3,7 @@
 import { MeeraImage as Image } from '@/components/shared/meera-image';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, Clock3, Github, Sparkles } from 'lucide-react';
+import { ArrowRight, Clock3, Github } from 'lucide-react';
 import { useState } from 'react';
 
 import { projects, type Project } from '@/lib/data';
@@ -76,10 +76,6 @@ export function ProjectsSection() {
 
         <div className="mx-auto max-w-[96rem] px-4 sm:px-6 lg:px-8">
           <AnimatedDiv className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.34em] text-sky-200/80">
-              <Sparkles className="h-4 w-4" />
-              Projects
-            </div>
             <h2 className="mt-6 font-headline text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               Project Index
             </h2>
@@ -88,7 +84,7 @@ export function ProjectsSection() {
             </p>
           </AnimatedDiv>
 
-          <div className="mt-14 grid auto-rows-fr gap-6 lg:grid-cols-2">
+          <div className="mt-14 grid items-start gap-6 lg:grid-cols-2">
             {projects.map((project, index) => {
               const live = isProjectLive(project);
 
@@ -100,7 +96,7 @@ export function ProjectsSection() {
                   viewport={{ once: true, amount: 0.16 }}
                   transition={{ duration: 0.5, ease: 'easeOut', delay: index * 0.05 }}
                   whileHover={{ y: -8 }}
-                  className="group relative min-h-[30rem] overflow-hidden rounded-[2rem] border border-white/12 bg-slate-950/70"
+                  className="group relative h-fit min-h-[30rem] self-start overflow-hidden rounded-[2rem] border border-white/12 bg-slate-950/70"
                   style={{ boxShadow: `0 36px 110px -70px ${project.glow}` }}
                 >
                   <div className="absolute inset-0 opacity-95" style={{ backgroundImage: project.backdrop }} />
@@ -126,7 +122,7 @@ export function ProjectsSection() {
                   <div className="absolute inset-0 rounded-[inherit] border border-white/8" />
 
                   <div className="relative p-4 sm:p-5">
-                    <div className="flex h-full min-h-[calc(30rem-2rem)] flex-col justify-between rounded-[1.65rem] border border-white/10 bg-slate-950/28 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[24px] sm:p-7">
+                    <div className="flex min-h-[calc(30rem-2rem)] flex-col justify-between rounded-[1.65rem] border border-white/10 bg-slate-950/28 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[24px] sm:p-7">
                       <div className="flex items-start justify-between gap-4">
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-slate-100 backdrop-blur-xl">
                           {project.eyebrow}
@@ -146,7 +142,7 @@ export function ProjectsSection() {
                           </p>
                           {project.internalHref === '/meeraai' && <details className="mt-5 rounded-2xl border border-sky-300/20 bg-sky-400/[0.05] text-sm text-slate-200">
                             <summary className="cursor-pointer rounded-2xl px-4 py-3 font-semibold outline-none focus-visible:ring-2 focus-visible:ring-sky-300">Current models, browser, and tested workflows</summary>
-                            <div className="space-y-5 px-4 pb-5 leading-7">
+                            <div className="max-h-[24rem] space-y-5 overflow-y-auto overscroll-contain px-4 pb-5 pr-3 leading-7">
                               <p>{meeraSummary.approach}</p>
                               <div><h4 className="font-semibold text-white">The seven local profiles</h4><ul className="mt-2 space-y-2">
                                 {meeraModels.map(model=><li key={model.id}><strong>{model.name}</strong>: {model.model} / {model.parameters} / {model.quantization}{model.studioAlias ? ` (Model Studio: ${model.studioAlias})` : ''}</li>)}
