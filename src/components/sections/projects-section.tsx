@@ -122,7 +122,7 @@ export function ProjectsSection() {
                   />
                   <div className="absolute inset-0 rounded-[inherit] border border-white/8" />
 
-                  <div className="relative p-4 sm:p-5">
+                  <div className="relative h-full p-4 sm:p-5">
                     <div className="flex h-full min-h-0 flex-col justify-between rounded-[1.65rem] border border-white/10 bg-slate-950/28 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[24px] sm:p-7">
                       <div className="flex items-start justify-between gap-4">
                         <div className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.32em] text-slate-100 backdrop-blur-xl">
