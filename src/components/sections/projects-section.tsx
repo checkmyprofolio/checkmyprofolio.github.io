@@ -3,7 +3,7 @@
 import { MeeraImage as Image } from '@/components/shared/meera-image';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowUpRight, Clock3, Github, Layers3, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Clock3, Github, Layers3, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 import { projects, type Project } from '@/lib/data';
@@ -132,7 +132,7 @@ export function ProjectsSection() {
                   transition={{ duration: 0.55, ease: 'easeOut', delay: index * 0.045 }}
                   whileHover={{ y: -5 }}
                   className="group relative h-[32rem] self-start overflow-hidden rounded-[2.25rem] border border-white/[0.11] bg-slate-950/80 shadow-[0_28px_80px_-48px_rgba(2,6,23,0.9)] transition-[border-color,box-shadow] duration-500 hover:border-sky-300/25 hover:shadow-[0_34px_90px_-48px_rgba(56,189,248,0.18)]"
-                  style={{ boxShadow: `0 28px 90px -60px ${project.glow}` }}
+
                 >
                   <div className="absolute inset-0 opacity-95" style={{ backgroundImage: project.backdrop }} />
                   {project.image ? (
@@ -141,7 +141,7 @@ export function ProjectsSection() {
                         src={project.image.imageUrl}
                         alt={project.image.description}
                         fill
-                        className="scale-[1.1] object-cover opacity-[0.35] blur-[30px] saturate-[1.15] transition-all duration-700 ease-out group-hover:scale-[1.16] group-hover:opacity-45"
+                        className="scale-[1.1] object-cover opacity-[0.35] blur-[30px] saturate-[1.15] transition-all duration-700 ease-out group-hover:scale-[1.16] group-hover:opacity-[0.45]"
                         sizes="(max-width: 1023px) 100vw, 50vw"
                         priority={index < 2}
                         data-ai-hint={project.image.imageHint}
