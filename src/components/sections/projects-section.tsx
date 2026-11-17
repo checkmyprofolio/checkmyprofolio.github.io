@@ -111,7 +111,7 @@ export function ProjectsSection() {
           <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-7">
             {projects.map((project, index) => {
               const live = isProjectLive(project);
-              const categoryLabel = project.eyebrow.replace(/^\\d+\\s\\/\\s/, '');
+              const categoryLabel = project.eyebrow.replace(/^\d+\s\/\s/, '');
               const statusLabel = project.status.includes('Public source available')
                 ? 'Public source'
                 : project.status.startsWith('Local source reviewed')
